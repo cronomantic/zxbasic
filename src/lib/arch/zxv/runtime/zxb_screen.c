@@ -578,6 +578,136 @@ void zxb_lib_paintdata(int x, int y, int w, int h, uint32_t data, int get)
         }
 }
 
+/* scroll.bas: moves 1 pixel the window from (x1, y1) to (x2, y2), both included,
+ * with the PLOT coordinates (y = 0 at the bottom). dir: 0 right, 1 left, 2 up,
+ * 3 down. What comes in is blank; the attributes do not change.
+ * A pixel row is 8 words, pixel 0 the highest bit of the first one. */
+static void row_get(int y, uint32_t w[8])
+{
+    const uint8_t *p = &bitmap[y * COLS];
+    for (int i = 0; i < 8; i++, p += 4)
+        w[i] = (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
+}
+
+static void row_put(int y, const uint32_t w[8], const uint32_t mask[8], int c1, int c2)
+{
+    uint8_t *p = &bitmap[y * COLS];
+    for (int i = 0; i < 8; i++, p += 4) {
+        uint32_t old = (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
+        uint32_t v = (old & ~mask[i]) | (w[i] & mask[i]);
+        p[0] = (uint8_t)(v >> 24);
+        p[1] = (uint8_t)(v >> 16);
+        p[2] = (uint8_t)(v >> 8);
+        p[3] = (uint8_t)v;
+    }
+    for (int c = c1; c <= c2; c++)
+        paint_line(c, y);
+}
+
+void zxb_lib_scroll(int x1, int y1, int x2, int y2, int dir)
+{
+    x1 &= 0xFF, y1 &= 0xFF, x2 &= 0xFF, y2 &= 0xFF;
+    if (x1 > x2 || y1 > y2 || y1 > 191)
+        return;
+    if (y2 > 191)
+        y2 = 191;
+    uint32_t mask[8] = { 0 }, w[8], zero[8] = { 0 };
+    for (int x = x1; x <= x2; x++)
+        mask[x >> 5] |= 0x80000000u >> (x & 31);
+    int top = 191 - y2, bottom = 191 - y1, c1 = x1 >> 3, c2 = x2 >> 3;
+
+    switch (dir) {
+    case 0:                             /* Right: each pixel takes the one on its left */
+    case 1:                             /* Left */
+        for (int y = top; y <= bottom; y++) {
+            row_get(y, w);
+            if (dir == 0) {
+                for (int i = 7; i > 0; i--)
+                    w[i] = w[i] >> 1 | w[i - 1] << 31;
+                w[0] >>= 1;
+                w[x1 >> 5] &= ~(0x80000000u >> (x1 & 31));
+            } else {
+                for (int i = 0; i < 7; i++)
+                    w[i] = w[i] << 1 | w[i + 1] >> 31;
+                w[7] <<= 1;
+                w[x2 >> 5] &= ~(0x80000000u >> (x2 & 31));
+            }
+            row_put(y, w, mask, c1, c2);
+        }
+        break;
+    case 2:                             /* Up: each row takes the one below */
+        for (int y = top; y < bottom; y++) {
+            row_get(y + 1, w);
+            row_put(y, w, mask, c1, c2);
+        }
+        row_put(bottom, zero, mask, c1, c2);
+        break;
+    case 3:                             /* Down */
+        for (int y = bottom; y > top; y--) {
+            row_get(y - 1, w);
+            row_put(y, w, mask, c1, c2);
+        }
+        row_put(top, zero, mask, c1, c2);
+        break;
+    }
+}
+
+/* winscroll.bas: moves 1 cell the window of width x height cells at (row, col),
+ * with its attributes. dir: 0 right, 1 left, 2 up, 3 down. The cells that are
+ * left blank keep their attributes. */
+static void copy_cell(int dc, int dr, int sc, int sr)
+{
+    for (int i = 0; i < 8; i++)
+        bitmap[(dr * 8 + i) * COLS + dc] = bitmap[(sr * 8 + i) * COLS + sc];
+    attrs[dr * COLS + dc] = attrs[sr * COLS + sc];
+}
+
+static void blank_cell(int c, int r)
+{
+    for (int i = 0; i < 8; i++)
+        bitmap[(r * 8 + i) * COLS + c] = 0;
+}
+
+void zxb_lib_winscroll(int r0, int c0, int w, int h, int dir)
+{
+    r0 &= 0xFF, c0 &= 0xFF, w &= 0xFF, h &= 0xFF;
+    if (r0 >= ROWS || c0 >= COLS || !w || !h)
+        return;
+    if (r0 + h > ROWS)
+        h = ROWS - r0;
+    if (c0 + w > COLS)
+        w = COLS - c0;
+    int r1 = r0 + h - 1, c1 = c0 + w - 1;
+
+    for (int r = r0; r <= r1; r++) {
+        if (dir == 0) {
+            for (int c = c1; c > c0; c--)
+                copy_cell(c, r, c - 1, r);
+            blank_cell(c0, r);
+        } else if (dir == 1) {
+            for (int c = c0; c < c1; c++)
+                copy_cell(c, r, c + 1, r);
+            blank_cell(c1, r);
+        }
+    }
+    if (dir == 2) {
+        for (int r = r0; r < r1; r++)
+            for (int c = c0; c <= c1; c++)
+                copy_cell(c, r, c, r + 1);
+        for (int c = c0; c <= c1; c++)
+            blank_cell(c, r1);
+    } else if (dir == 3) {
+        for (int r = r1; r > r0; r--)
+            for (int c = c0; c <= c1; c++)
+                copy_cell(c, r, c, r - 1);
+        for (int c = c0; c <= c1; c++)
+            blank_cell(c, r0);
+    }
+    for (int r = r0; r <= r1; r++)
+        for (int c = c0; c <= c1; c++)
+            paint_cell(c, r);
+}
+
 /* The Spectrum ports: IN of the keyboard (xxFEh) and the Kempston joystick (1Fh);
  * OUT to FEh sets the border */
 uint32_t zxb_IN(uint32_t port)

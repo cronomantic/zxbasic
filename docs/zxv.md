@@ -95,6 +95,7 @@ and parameters of the Z80 ones, but addresses are `ULong`:
 | `keys.bas` | `GetKey`, `MultiKeys`, `GetKeyScanCode` and the `KEYx` scan codes |
 | `attr.bas`, `point.bas`, `screen.bas`, `pos.bas`, `csrlin.bas` | `attr`, `setattr`, `attraddr`, `point`, `screen`, `pos`, `csrlin` |
 | `putchars.bas`, `clearbox.bas` | `putChars`, `getChars`, `paint`, `paintData`, `getPaintData`, `clearBox` |
+| `scroll.bas`, `winscroll.bas` | `ScrollRight`, `ScrollLeft`, `ScrollUp`, `ScrollDown` (a pixel; the whole screen, 2.4 ms); `WinScrollRight`, `WinScrollLeft`, `WinScrollUp`, `WinScrollDown` (a cell, with the attributes) |
 | `alloc.bas`, `memcopy.bas` | `allocate`, `callocate`, `deallocate`, `reallocate`, `memavail`, `maxavail`, `MemMove`, `MemCopy`, `MemSet` |
 | `random.bas`, `round.bas`, `fmath.bas`, `hmirror.bas`, `asc.bas` | `randInt`, `randFixed`, `randomLimit`, `Round`, `fSin`, `fCos`, `fTan`, `fSqrt`, `hMirror`, `asc` |
 | `retrace.bas`, `sinclair.bas` | `waitretrace`; the Sinclair BASIC functions |
