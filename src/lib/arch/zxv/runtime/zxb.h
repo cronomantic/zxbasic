@@ -39,9 +39,9 @@ void zxb_print_char(int c);
 void zxb_print_text(const char *s, int n);
 uint8_t zxb_vpeek(uint32_t addr);
 void zxb_vpoke(uint32_t addr, uint8_t v);
-void zxb_report(const char *msg);
+void zxb_report(const char *msg);       /* On the bottom line, as the Spectrum reports */
 void zxb_BORDER(int n);
-uint32_t zxb_IN(uint32_t port);       /* On the bottom line, as the Spectrum reports */
+uint32_t zxb_IN(uint32_t port);         /* The Spectrum ports: keyboard and Kempston */
 
 /* Others */
 int zxb_key(void);              /* Next key of the queue, or 0 */
