@@ -89,7 +89,7 @@ class FunctionTranslator(Translator):
                 q = []
                 for x in l:
                     q.append("%02X" % (x & 0xFF))
-                    q.append("%02X" % ((x & 0xFF) >> 8))
+                    q.append("%02X" % ((x >> 8) & 0xFF))
 
                 q.append("%02X" % local_var.type_.size)
                 r = []
