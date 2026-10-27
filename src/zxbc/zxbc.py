@@ -167,6 +167,11 @@ def main(args=None, emitter=None) -> int:
                 output_file.write(str(quad) + "\n")
         return 0  # Exit success
 
+    if hasattr(arch.target, "finish"):  # The arch builds its output itself (it is not a Z80)
+        result = arch.target.finish(backend)
+        save_config(options)
+        return result
+
     # Join all lines into a single string and ensures an INTRO at end of file
     asm_output = backend.emit(optimize=OPTIONS.optimization_level > 0)
     asm_output = arch.target.optimizer.Optimizer().optimize(asm_output) + "\n"  # invoke the peephole optimizer

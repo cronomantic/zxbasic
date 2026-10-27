@@ -83,21 +83,32 @@ class TYPE(enum.IntEnum):
 
     @classmethod
     def type_size(cls, type_: TYPE) -> int:
-        type_sizes = {
-            cls.boolean: 1,
-            cls.byte: 1,
-            cls.ubyte: 1,
-            cls.integer: 2,
-            cls.uinteger: 2,
-            cls.long: 4,
-            cls.ulong: 4,
-            cls.fixed: 4,
-            cls.float: 5,
-            cls.string: 2,
-            cls.unknown: 0,
-            cls.nil: 0,
-        }
-        return type_sizes[type_]
+        return _TYPE_SIZES[type_]
+
+    @classmethod
+    def set_type_size(cls, type_: "TYPE", size: int) -> None:
+        """Changes the size of a type (float and string are arch dependent)"""
+        _TYPE_SIZES[type_] = size
+
+    @classmethod
+    def reset_type_sizes(cls) -> None:
+        _TYPE_SIZES.clear()
+        _TYPE_SIZES.update(
+            {
+                cls.boolean: 1,
+                cls.byte: 1,
+                cls.ubyte: 1,
+                cls.integer: 2,
+                cls.uinteger: 2,
+                cls.long: 4,
+                cls.ulong: 4,
+                cls.fixed: 4,
+                cls.float: 5,
+                cls.string: 2,
+                cls.unknown: 0,
+                cls.nil: 0,
+            }
+        )
 
     @classproperty
     def types(cls) -> set[TYPE]:
@@ -172,6 +183,10 @@ class TYPE(enum.IntEnum):
                 return t
 
         return None
+
+
+_TYPE_SIZES: dict[TYPE, int] = {}
+TYPE.reset_type_sizes()
 
 
 @enum.unique

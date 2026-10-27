@@ -25,10 +25,15 @@ __all__ = (
 # -----------------------------------------
 # Arch initialization setup (same as zx48k)
 # -----------------------------------------
-src.api.global_.PARAM_ALIGN = 2
-src.api.global_.BOUND_TYPE = TYPE.uinteger
-src.api.global_.SIZE_TYPE = TYPE.ubyte
-src.api.global_.PTR_TYPE = TYPE.uinteger
-src.api.global_.STR_INDEX_TYPE = TYPE.uinteger
-src.api.global_.MIN_STRSLICE_IDX = 0
-src.api.global_.MAX_STRSLICE_IDX = 65534
+def setup() -> None:
+    """Arch initialization (called each time this arch is selected)"""
+    src.api.global_.PARAM_ALIGN = 2
+    src.api.global_.BOUND_TYPE = TYPE.uinteger
+    src.api.global_.SIZE_TYPE = TYPE.ubyte
+    src.api.global_.PTR_TYPE = TYPE.uinteger
+    src.api.global_.STR_INDEX_TYPE = TYPE.uinteger
+    src.api.global_.MIN_STRSLICE_IDX = 0
+    src.api.global_.MAX_STRSLICE_IDX = 65534
+
+
+setup()

@@ -270,6 +270,13 @@ class SymbolTable:
 
             return var_entry.memsize
 
+        def aligned(offset: int, size: int) -> int:
+            """Rounds up the offset so the variable is aligned (if the arch requires it)"""
+            align = min(global_.LOCAL_ALIGN, size)
+            while align & (align - 1):  # Power of 2
+                align -= 1
+            return -(-offset // max(align, 1)) * max(align, 1)
+
         entries = sorted(scope.values(filter_by_opt=True), key=entry_size)
         offset = 0
 
@@ -279,11 +286,11 @@ class SymbolTable:
 
             # Local variables offset
             if entry.class_ == CLASS.var and entry.scope == SCOPE.local:
-                offset += entry_size(entry)
+                offset = aligned(offset + entry_size(entry), entry_size(entry))
                 entry.ref.offset = offset
 
             if entry.class_ == CLASS.array and entry.scope == SCOPE.local:
-                entry.ref.offset = entry_size(entry) + offset
+                entry.ref.offset = aligned(entry_size(entry) + offset, global_.LOCAL_ALIGN)
                 offset = entry.ref.offset
 
         return offset

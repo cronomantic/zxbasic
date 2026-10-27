@@ -14,6 +14,7 @@ from src.symbols import sym as symbols
 
 
 class VarTranslator(TranslatorVisitor):
+    TRANSLATOR = Translator  # Where default values are converted to bytes
     """Var Translator
     This translator emits memory var space
     """
@@ -40,7 +41,7 @@ class VarTranslator(TranslatorVisitor):
                 if entry.default_value.token == "CONSTEXPR":
                     self.ic_varx(node.mangled, node.type_, [self.traverse_const(entry.default_value)])
                 else:
-                    self.ic_vard(node.mangled, Translator.default_value(node.type_, entry.default_value))
+                    self.ic_vard(node.mangled, self.TRANSLATOR.default_value(node.type_, entry.default_value))
 
     def visit_ARRAYDECL(self, node):
         entry = node.entry
@@ -76,7 +77,7 @@ class VarTranslator(TranslatorVisitor):
             self.ic_deflabel(data_label, "%s" % addr)
         else:
             if entry.default_value is not None:
-                arr_data = Translator.array_default_value(node.type_, entry.default_value)
+                arr_data = self.TRANSLATOR.array_default_value(node.type_, entry.default_value)
             else:
                 arr_data = ["00"] * node.size
 

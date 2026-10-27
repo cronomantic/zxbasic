@@ -134,6 +134,14 @@ def parse_options(args: list[str] | None = None) -> Namespace:
     if OPTIONS.output_file_type == FileType.IR:
         OPTIONS.emit_backend = True
 
+    if OPTIONS.architecture == "zxv":  # ZX-V programs: .zxv, or the assembler / IR
+        if not options.output_format and OPTIONS.output_file_type == FileType.BIN:
+            OPTIONS.output_file_type = FileType.ZXV
+        if OPTIONS.output_file_type not in {FileType.ZXV, FileType.ASM, FileType.IR}:
+            parser.error("The zxv architecture only outputs zxv, asm or ir formats")
+    elif OPTIONS.output_file_type == FileType.ZXV:
+        parser.error("The zxv output format requires --arch=zxv")
+
     if (options.basic or options.autorun) and OPTIONS.output_file_type not in {
         FileType.TAP,
         FileType.TZX,

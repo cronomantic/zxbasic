@@ -93,6 +93,7 @@ class UnreachableCodeVisitor(UniqueVisitor):
             node.class_ == CLASS.function
             and node.body.token == "BLOCK"
             and (not node.body or node.body[-1].token not in {"CHKBREAK", "LABEL", "RETURN"})
+            and not (gl.ASM_RETURNS_VALUE and node.body and node.body[-1].token == "ASM")
         ):
             # String functions must *ALWAYS* return a value.
             # Put a sentinel ("dummy") return "" sentence that will be removed if other is detected
@@ -100,7 +101,7 @@ class UnreachableCodeVisitor(UniqueVisitor):
             errmsg.warning_function_should_return_a_value(lineno, node.name, node.filename)
             type_ = node.type_
             if type_ is not None and type_ == self.TYPE(TYPE.string) and node.convention != CONVENTION.fastcall:
-                node.body.append(symbols.ASM("\nld hl, 0\n", lineno, node.filename, is_sentinel=True))
+                node.body.append(symbols.ASM(gl.NULL_STRING_ASM, lineno, node.filename, is_sentinel=True))
 
         yield self.generic_visit(node)
 

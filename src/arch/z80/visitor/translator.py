@@ -47,6 +47,9 @@ class LabelledData(NamedTuple):
 class Translator(TranslatorVisitor):
     """ZX Spectrum translator"""
 
+    # Offset of a byte inside its parameter slot (the Z80 pushes it as the high byte of a word)
+    BYTE_PARAM_OFFSET = 1
+
     def visit_NOP(self, node):
         pass  # nothing to do
 
@@ -231,17 +234,17 @@ class Translator(TranslatorVisitor):
                 t = node.t
 
             if scope == SCOPE.global_:
-                self.ic_load(TYPE.uinteger, t, "#" + node.mangled)
+                self.ic_load(gl.PTR_TYPE, t, "#" + node.mangled)
             elif scope == SCOPE.parameter:  # A function has used a parameter as an argument to another function call
                 if not node.value.byref:  # It's like a local variable
-                    offset = 1 if node.type_ in (Type.byte_, Type.ubyte) else 0
+                    offset = self.BYTE_PARAM_OFFSET if node.type_ in (Type.byte_, Type.ubyte) else 0
                     self.ic_paddr(node.value.offset + offset, t)
                 else:
                     self.ic_pload(gl.PTR_TYPE, t, str(node.value.offset))
             elif scope == SCOPE.local:
                 self.ic_paddr(-node.value.offset, t)
 
-            self.ic_param(TYPE.uinteger, t)
+            self.ic_param(gl.PTR_TYPE, t)
             return
 
         # Must compute Address of @array(...)
@@ -1054,17 +1057,7 @@ class Translator(TranslatorVisitor):
             return [f"##({val}) & 0xFFFF", f"##(({val}) >> 16) & 0xFFFF"]
 
         if type_ == cls.TYPE(TYPE.float):
-            C, DE, HL = Float.float(expr.value)
-            C = C[:-1]  # Remove 'h' suffix
-            C = C[-2:]
-
-            DE = DE[:-1]  # Remove 'h' suffix
-            DE = ("00" + DE)[-4:]
-
-            HL = HL[:-1]  # Remove 'h' suffix
-            HL = ("00" + HL)[-4:]
-
-            return [C, DE[-2:], DE[:-2], HL[-2:], HL[:-2]]
+            return cls.float_bytes(expr.value)
 
         if type_ == cls.TYPE(TYPE.fixed):
             value = 0xFFFFFFFF & int(expr.value * 2**16)
@@ -1076,16 +1069,31 @@ class Translator(TranslatorVisitor):
         return result[: type_.size]
 
     @staticmethod
-    def array_default_value(type_, values):
+    def float_bytes(value) -> list[str]:
+        """Returns a float as a list of bytes (as hexadecimal 2 char string), in the arch format"""
+        C, DE, HL = Float.float(value)
+        C = C[:-1]  # Remove 'h' suffix
+        C = C[-2:]
+
+        DE = DE[:-1]  # Remove 'h' suffix
+        DE = ("00" + DE)[-4:]
+
+        HL = HL[:-1]  # Remove 'h' suffix
+        HL = ("00" + HL)[-4:]
+
+        return [C, DE[-2:], DE[:-2], HL[-2:], HL[:-2]]
+
+    @classmethod
+    def array_default_value(cls, type_, values):
         """Returns a list of bytes (as hexadecimal 2 char string)
         which represents the array initial value.
         """
         if not isinstance(values, list):
-            return Translator.default_value(type_, values)
+            return cls.default_value(type_, values)
 
         l = []
         for row in values:
-            l.extend(Translator.array_default_value(type_, row))
+            l.extend(cls.array_default_value(type_, row))
 
         return l
 

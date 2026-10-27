@@ -50,8 +50,7 @@ class VarRef(SymbolRef):
             if self.byref:
                 return BasicType(gl.PTR_TYPE).size
 
-            return self.parent.type_.size + (
-                self.parent.type_.size % gl.PARAM_ALIGN
-            )  # Make it even-sized (Float and Byte)
+            # Round it up to the arch parameter alignment (e.g. even-sized for Float and Byte)
+            return -(-self.parent.type_.size // gl.PARAM_ALIGN) * gl.PARAM_ALIGN
 
         return self.parent.type_.size

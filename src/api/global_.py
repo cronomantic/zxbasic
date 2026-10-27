@@ -119,6 +119,19 @@ FUNCTIONS: list[SymbolID] = []
 PARAM_ALIGN: int | None = None  # Set to None, so if not set will raise error
 
 # ----------------------------------------------------------------------
+# Maximum alignment of local variables in the stack frame (1 = none)
+# ----------------------------------------------------------------------
+LOCAL_ALIGN: int = 1
+
+# ----------------------------------------------------------------------
+# Assembler that returns an empty string, for string functions that end
+# without RETURN; and whether a function ending with an ASM block returns
+# what that block leaves (then it needs neither that nor a warning)
+# ----------------------------------------------------------------------
+NULL_STRING_ASM: str = "\nld hl, 0\n"
+ASM_RETURNS_VALUE: bool = False
+
+# ----------------------------------------------------------------------
 # Data type used for array boundaries. Must be an integral
 # ----------------------------------------------------------------------
 BOUND_TYPE: TYPE  # Unset, so if not set will raise error

@@ -1974,7 +1974,7 @@ class ZXBasicTransformer(Transformer):
         p0 = make_sentence(
             get_lineno(items[0]),
             "POKE",
-            make_typecast(Type.uinteger, items[i - 1], get_lineno(items[i + 1 - 1])),
+            make_typecast(_TYPE(gl.PTR_TYPE), items[i - 1], get_lineno(items[i + 1 - 1])),
             make_typecast(Type.ubyte, items[i + 2 - 1], get_lineno(items[i + 1 - 1])),
         )
         return p0
@@ -1988,7 +1988,7 @@ class ZXBasicTransformer(Transformer):
         p0 = make_sentence(
             get_lineno(items[0]),
             "POKE",
-            make_typecast(Type.uinteger, items[i + 1 - 1], get_lineno(items[i + 2 - 1])),
+            make_typecast(_TYPE(gl.PTR_TYPE), items[i + 1 - 1], get_lineno(items[i + 2 - 1])),
             make_typecast(items[i - 1], items[i + 3 - 1], get_lineno(items[i + 3 - 1])),
         )
         return p0
@@ -2002,7 +2002,7 @@ class ZXBasicTransformer(Transformer):
         p0 = make_sentence(
             get_lineno(items[0]),
             "POKE",
-            make_typecast(Type.uinteger, items[i + 2 - 1], get_lineno(items[i + 3 - 1])),
+            make_typecast(_TYPE(gl.PTR_TYPE), items[i + 2 - 1], get_lineno(items[i + 3 - 1])),
             make_typecast(items[i - 1], items[i + 4 - 1], get_lineno(items[i + 5 - 1])),
         )
         return p0
@@ -2878,7 +2878,7 @@ class ZXBasicTransformer(Transformer):
             p0 = make_builtin(
                 get_lineno(items[0]),
                 "USR",
-                make_typecast(Type.uinteger, items[1], get_lineno(items[0])),
+                make_typecast(_TYPE(gl.PTR_TYPE), items[1], get_lineno(items[0])),
                 type_=Type.uinteger,
             )
         return p0
@@ -2891,7 +2891,10 @@ class ZXBasicTransformer(Transformer):
     def expr_peek(self, meta, items):
         p0 = None
         p0 = make_builtin(
-            get_lineno(items[0]), "PEEK", make_typecast(Type.uinteger, items[1], get_lineno(items[0])), type_=Type.ubyte
+            get_lineno(items[0]),
+            "PEEK",
+            make_typecast(_TYPE(gl.PTR_TYPE), items[1], get_lineno(items[0])),
+            type_=Type.ubyte,
         )
         return p0
 
@@ -2903,7 +2906,7 @@ class ZXBasicTransformer(Transformer):
         p0 = make_builtin(
             get_lineno(items[0]),
             "PEEK",
-            make_typecast(Type.uinteger, items[4], get_lineno(items[3])),
+            make_typecast(_TYPE(gl.PTR_TYPE), items[4], get_lineno(items[3])),
             type_=cast(sym.TYPEREF, items[2]).type_,
         )
         return p0
