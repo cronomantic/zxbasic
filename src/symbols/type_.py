@@ -112,6 +112,12 @@ class SymbolBASICTYPE(SymbolTYPE):
         return True
 
     @property
+    def size(self) -> int:
+        """Some sizes depend on the target arch (TYPE.set_type_size), which can change after
+        these types are created."""
+        return TYPE.size(self._type)
+
+    @property
     def is_signed(self) -> bool:
         return TYPE.is_signed(self._type)
 
