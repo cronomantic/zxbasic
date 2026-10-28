@@ -121,7 +121,7 @@ pixels of the drawing page, in any mode.
 Where it is not as in the ZX-V BASIC: the sprite of a string is `GRABSTR` (`GRAB n,
 w, a$` there), `KEY`, `JOY`, `HIT` and `PIXEL` need parentheses, `REMAP` and `SOUND`
 take one pair at a time, `POLY` up to 8 points, and `SCREEN` can not be used with
-`screen.bas`. `examples/zxv/estrellas.bas` is a small game made with it.
+`screen.bas`.
 
 `ASM` blocks are RISC-V assembler (GNU syntax). In a function, the parameters
 are at `8(s0)`, `12(s0)`... (4 bytes each, 8 a `Float`), and a function that ends
