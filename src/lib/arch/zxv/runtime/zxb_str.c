@@ -102,6 +102,16 @@ void zxb_LETSUBSTR(zstr s, uint32_t upper, uint32_t lower, int owned, zstr src)
         zxb_free(src);
 }
 
+/* a$ = b$ with arrays of strings: each element of dst gets a copy of the one of src */
+void zxb_STR_ARRAYCOPY(uint32_t count, const zstr *src, zstr *dst)
+{
+    for (uint32_t i = 0; i < count; i++) {
+        zstr old = dst[i];
+        dst[i] = zxb_loadstr(src[i]);
+        zxb_free(old);
+    }
+}
+
 zstr zxb_CHR(uint32_t count, const uint32_t *codes)
 {
     zstr r = zxb_newstr(NULL, count);

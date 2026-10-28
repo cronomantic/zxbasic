@@ -56,14 +56,18 @@ Works and is tested (`tests/zxv/run.py`):
 - Strings: slices, `LET a$(x TO y)`, `CHR$`, `CODE`, `STR$`, `VAL`, `LEN`.
 - Arrays of any type and dimensions, with bounds and initial values; global,
   local (in the heap, freed when the function ends) and as parameters, with
-  `LBOUND` and `UBOUND`.
+  `LBOUND` and `UBOUND`; copying them (`a = b`, also arrays of strings).
 - Math functions (the same results as the ZX-V BASIC), `RND`, `RANDOMIZE`.
 - `READ`, `DATA` (constants and expressions) and `RESTORE`.
-- `PRINT` with `AT`, `TAB`, commas, colours, `INVERSE`, `OVER`, UDG and block
+- `PRINT` with `AT`, `TAB`, commas, colours, `FLASH` (it blinks every 16 frames,
+  as in the Spectrum), `INVERSE`, `OVER`, UDG and block
   graphics; `CLS`, `BORDER`, `PLOT`, `DRAW` (with arcs), `CIRCLE`, `BEEP`, `PAUSE`,
   `INKEY$`, `USR`, `PEEK` and `POKE`; `IN` and `OUT` with the Spectrum ports:
   the keyboard (`xxFEh`, the ZX-V matrix is the Spectrum one), the Kempston
   joystick (`1Fh`) and the border (`OUT 254`).
+- `SAVE`, `LOAD` and `VERIFY` with `CODE`, `SCREEN$` and `DATA` (below).
+- With `--enable-break`, Esc (BREAK) stops the program (`L BREAK into program`)
+  and the error reports say the line: `9 STOP statement, 12`.
 - The libraries below.
 - When the program ends, its report (`0 OK`, or the error) stays on the bottom
   line until a key is pressed, as in the Spectrum: the ZX-V BASIC starts again and
@@ -75,12 +79,32 @@ seconds (17 frames), about 90 times the ZX-V BASIC.
 Not yet:
 
 - The libraries that are not in the list below.
-- Copying arrays (`a = b`).
-- `LOAD`/`SAVE`, `FLASH` (it does not blink), `BOLD`, `ITALIC`.
+- `BOLD`, `ITALIC`.
 - `FASTCALL` functions with parameters written in BASIC (their first parameter
   comes in `a0`, for `ASM` blocks).
-- The line number of errors.
 - Optimization of the generated code (the `-O` levels only change the front end).
+
+## Files
+
+`SAVE`, `LOAD` and `VERIFY` work on the SD card of ZX-V (or the emulator's card
+folder), as in its BASIC: a name without extension gets `.tap`, a Spectrum tape
+with a `CODE` header and the data, that the ZX-V BASIC (and Spectrum emulators)
+load too; with another extension, the bytes as they are.
+
+```basic
+SAVE "screen" SCREEN$              ' screen.tap
+SAVE "level.bin" CODE @map(0), 512 ' 512 raw bytes
+LOAD "level.bin" CODE @map(0)      ' raw bytes need the address
+LOAD "screen" SCREEN$
+VERIFY "screen" SCREEN$
+```
+
+`LOAD ... CODE` without an address loads the block where it was saved. A tape
+header has 16 bits for the address: above 64K (the ZX-V memory), its second
+parameter, 32768 for `CODE` in the Spectrum, keeps the high half. `DATA` saves a
+variable (`SAVE "x" DATA v`), or all of them without a name; as in the Z80 target,
+an array needs `CODE`. A missing file stops the program with `T File not
+found`, as in the ZX-V BASIC.
 
 ## Libraries
 

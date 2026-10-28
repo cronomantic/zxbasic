@@ -55,6 +55,9 @@ RUNTIME_SIGNATURES: dict[str, tuple[str, ...]] = {
     "ARRAYSTR_FREE_MEM": ("u16",),
     "LBOUND": ("u16",),
     "UBOUND": ("u16",),
+    "STR_ARRAYCOPY": ("u16", "u32", "u32"),
+    "SAVE_CODE": ("u32", "u32", "str"),
+    "LOAD_CODE": ("u8", "u32", "u32", "str"),
 }
 
 # Routines without stack parameters (only fparams or none)
@@ -75,6 +78,7 @@ RUNTIME_SIMPLE = {
     "PRINTF16",
     "PRINTF",
     "STR_FAST",
+    "CHECK_BREAK",
     "VAL",
     "ASC",
     "MEM_FREE",
@@ -971,6 +975,13 @@ class Backend(BackendInterface):
 
     def _nop(self):
         pass
+
+    def _memcopy(self, dest, src, size):
+        """Copies size bytes from the address src to dest (a = b with arrays)"""
+        self.get(size, "u32", ("a2",))
+        self.get(src, "u32", ("a0",))
+        self.get(dest, "u32", ("a1",))
+        self.ccall("zxb_lib_memmove")
 
     def _org(self, value):
         pass  # The program is relocated by the linker

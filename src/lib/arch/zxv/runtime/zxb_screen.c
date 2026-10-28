@@ -43,6 +43,9 @@ static int ctrl, ctrl_arg;          /* Pending control code and its first parame
 
 static uint32_t low16(uint32_t a) { return LOW(a) | (uint32_t)LOW(a + 1) << 8; }
 
+static volatile int flash_phase;     /* 1: the FLASH cells have ink and paper swapped */
+static int flash_frames;
+
 static void paint_line(int c, int y)
 {
     uint8_t a = attrs[(y >> 3) * COLS + c];
@@ -50,6 +53,8 @@ static void paint_line(int c, int y)
     uint32_t ink = ((a & 7) | bright) * 0x11111111u;
     uint32_t paper = (((a >> 3) & 7) | bright) * 0x11111111u;
     uint32_t m = expand[bitmap[y * COLS + c]];
+    if ((a & 0x80) && flash_phase)
+        m = ~m;
     zxb_vram[y * zxb_wpl + c] = (ink & m) | (paper & ~m);
 }
 
@@ -65,6 +70,24 @@ static void paint_all(void)
         for (int c = 0; c < COLS; c++)
             paint_cell(c, r);
 }
+
+/* FLASH: every 16 frames (as in the Spectrum) ink and paper swap in the
+ * cells with FLASH. Called in the VBLANK interrupt; a cell the program is
+ * changing at that moment is painted again by the program afterwards. */
+static void flash_hook(void)
+{
+    if (++flash_frames < 16)
+        return;
+    flash_frames = 0;
+    flash_phase ^= 1;
+    for (int r = 0; r < ROWS; r++)
+        for (int c = 0; c < COLS; c++)
+            if (attrs[r * COLS + c] & 0x80)
+                paint_cell(c, r);
+}
+
+/* Before going back to the BASIC: no more frame hook */
+void zxb_screen_stop(void) { zxv_set_frame_hook(0); }
 
 /* The attribute of a cell after printing or plotting on it */
 static uint8_t new_attr(uint8_t old)
@@ -95,6 +118,7 @@ void zxb_screen_init(void)
     zxv_set_mode(0);
     zxv_set_page(0);
     *(volatile uint8_t *)(uintptr_t)ZXV_V_BORDER = border;
+    zxv_set_frame_hook(flash_hook);
 }
 
 /* --- Attributes ------------------------------------------------------------ */

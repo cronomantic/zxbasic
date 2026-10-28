@@ -10,6 +10,7 @@
 import struct
 
 import src.api.global_ as gl
+from src.api.config import OPTIONS
 from src.api.constants import TYPE
 from src.arch.z80.backend.runtime import Labels as RuntimeLabel
 from src.arch.z80.visitor.function_translator import FunctionTranslator as Z80FunctionTranslator
@@ -37,8 +38,25 @@ class ZxvTranslation:
         self.ic_fparam(TYPE.float, node.children[0].t)
         self.runtime_call(RuntimeLabel.BEEP, 0)
 
+    def visit_BLOCK(self, node):
+        # With --enable-break, each statement keeps its line in zxb_line before it runs, for
+        # the error reports (CHKBREAK comes after the line, so it only has the previous one)
+        line = None
+        for child in node.children:
+            lineno = getattr(child, "lineno", 0)
+            if OPTIONS.enable_break and child.token not in ("BLOCK", "CHKBREAK", "LABEL") and lineno:
+                if lineno != line:
+                    self.ic_inline(f"\tli t0, {lineno}\n\tla t1, zxb_line\n\tsw t0, 0(t1)")
+                line = lineno
+            elif child.token == "LABEL":
+                line = None  # A jump may land here
+            yield self.visit(child)
+
     def visit_CHKBREAK(self, node):
-        pass  # Ctrl+Alt+Del stops a program in ZX-V
+        # With --enable-break: Esc (BREAK) stops the program
+        if self.PREV_TOKEN != node.token:
+            self.ic_fparam(gl.PTR_TYPE, node.children[0].t)
+            self.runtime_call(RuntimeLabel.CHECK_BREAK, 0)
 
     def emit_jump_tables(self):
         # Number of entries and 32-bit addresses

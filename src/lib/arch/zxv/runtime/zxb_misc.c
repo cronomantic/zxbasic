@@ -34,6 +34,7 @@ static void echo_flush(void)
 
 static void test_exit(int code)
 {
+    zxb_screen_stop();
     echo_flush();
     register uint32_t a0 __asm__("a0") = (uint32_t)code;
     register uint32_t a7 __asm__("a7") = 93;
@@ -76,6 +77,7 @@ int zxb_finish(int code)
     test_exit(code);
 #endif
     report_and_wait("0 OK");
+    zxb_screen_stop();
     return code;
 }
 
@@ -91,29 +93,72 @@ static const char *const reports[] = {
     "P FN without DEF", "Q Parameter error", "R Tape loading error",
 };
 
+uint32_t zxb_line;                      /* The line running, with --enable-break (0: unknown) */
+
+/* An error report: with the line, if it is known ("2 Variable not found, 20"),
+ * on the bottom line until a key is pressed, and back to the BASIC */
+static void fail(const char *msg, int test_code)
+{
+    char buf[64];
+    if (zxb_line) {
+        int n = 0;
+        while (msg[n] && n < 48)
+            buf[n] = msg[n], n++;
+        buf[n++] = ',', buf[n++] = ' ';
+        char d[10];
+        int k = 0;
+        for (uint32_t v = zxb_line; v; v /= 10)
+            d[k++] = (char)('0' + v % 10);
+        while (k)
+            buf[n++] = d[--k];
+        buf[n] = 0;
+        msg = buf;
+    }
+#ifdef ZXB_TEST
+    char m[] = "\nERROR ";
+    zxb_echo(m, sizeof(m) - 1);
+    int len = 0;
+    while (msg[len])
+        len++;
+    zxb_echo(msg, len);
+    zxb_echo("\n", 1);
+    test_exit(test_code);
+#else
+    (void)test_code;
+#endif
+    report_and_wait(msg);
+    zxb_screen_stop();
+    zxv_report_error(0, msg);
+    for (;;)
+        ;
+}
+
 /* ERROR n: the report n + 1, as ZX Basic */
 void zxb_ERROR(int code)
 {
     code &= 0xFF;
+    if (code < (int)(sizeof(reports) / sizeof(reports[0])))
+        fail(reports[code], code + 1);
 #ifdef ZXB_TEST
-    char m[] = "\nERROR ";
+    char m[] = "\nERROR \n";
     zxb_echo(m, sizeof(m) - 1);
-    if (code < (int)(sizeof(reports) / sizeof(reports[0]))) {
-        int n = 0;
-        while (reports[code][n])
-            n++;
-        zxb_echo(reports[code], n);
-    }
-    zxb_echo("\n", 1);
     test_exit(code + 1);
 #endif
-    const char *msg = code < (int)(sizeof(reports) / sizeof(reports[0])) ? reports[code] : "0 OK";
-    report_and_wait(msg);
-    if (code == 255)                    /* 0 OK */
-        zxv_exit_to_basic(0);
-    zxv_report_error(0, msg);
-    for (;;)
-        ;
+    report_and_wait("0 OK");            /* ERROR 255 */
+    zxb_screen_stop();
+    zxv_exit_to_basic(0);
+}
+
+/* An error with its own report (the ZX-V BASIC ones, such as T File not found) */
+void zxb_fail(const char *msg) { fail(msg, 100); }
+
+/* CHECK_BREAK line (--enable-break), after each line: Esc (BREAK) stops the
+ * program. zxb_line has the line already: each statement sets it before it runs. */
+void zxb_CHECK_BREAK(uint32_t line)
+{
+    (void)line;
+    if ((*(volatile uint8_t *)(uintptr_t)(ZXV_I_KEYMAP + (0x29 >> 3)) >> (0x29 & 7)) & 1)
+        zxb_ERROR(20);                  /* L BREAK into program */
 }
 
 void zxb_STOP(int code)

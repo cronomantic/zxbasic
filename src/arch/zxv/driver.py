@@ -110,6 +110,13 @@ def finish(backend) -> int:
     if gl.has_errors:
         return 1
 
+    # The variables, between ZXBASIC_USER_DATA and its end (SAVE/LOAD ... DATA without a name)
+    start, end = gl.ZXBASIC_USER_DATA, gl.ZXBASIC_USER_DATA + "_END"
+    data = (
+        ["\t.data", "\t.balign 4", f"{start}:"]
+        + data
+        + ["\t.data", f"{end}:", f"\t.set {gl.ZXBASIC_USER_DATA_LEN}, {end} - {start}"]
+    )
     asm = PROLOGUE.split("\n") + code + data + backend.data
     asm_text = "\n".join(asm) + "\n"
 

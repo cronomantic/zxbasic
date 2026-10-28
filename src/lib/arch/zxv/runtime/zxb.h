@@ -35,6 +35,7 @@ zstr zxb_loadstr(const uint8_t *s);
 
 /* The screen, as a ZX Spectrum (zxb_screen.c) */
 void zxb_screen_init(void);
+void zxb_screen_stop(void);             /* Before going back to the BASIC */
 void zxb_CLS(void);
 void zxb_print_char(int c);
 void zxb_print_text(const char *s, int n);

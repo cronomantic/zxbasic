@@ -8,8 +8,9 @@ Needs the RISC-V toolchain in the PATH and:
   ZXV_ROM   the ROM (optional: the one of the emulator otherwise)
 
 The runtime is built with -DZXB_TEST, so PRINT also goes to the zxv-cli console.
-A test may have NAME.cfg with the zxv-cli options (--frames, --type...), and
-NAME.pix with pixels its screen must have: X,Y=RRGGBB in the 720x576 image.
+A test may have NAME.opt with more options for the compiler (--enable-break...),
+NAME.cfg with the zxv-cli options (--frames, --type...), and NAME.pix with
+pixels its screen must have: X,Y=RRGGBB in the 720x576 image.
 """
 
 import os
@@ -48,8 +49,15 @@ def run_test(name: str, update: bool) -> bool:
         os.mkdir(sd)
         prog = os.path.join(sd, "prog.zxv")
         env = dict(os.environ, ZXV_CFLAGS="-DZXB_TEST")
+        zxbc_opts = []
+        opt = os.path.join(HERE, name + ".opt")
+        if os.path.exists(opt):
+            zxbc_opts = shlex.split(open(opt, encoding="utf-8").read())
         result = subprocess.run(
-            [sys.executable, ZXBC, "--arch", "zxv", "-o", prog, bas], env=env, capture_output=True, text=True
+            [sys.executable, ZXBC, "--arch", "zxv", *zxbc_opts, "-o", prog, bas],
+            env=env,
+            capture_output=True,
+            text=True,
         )
         if result.returncode:
             print(f"{name}: compilation failed\n{result.stdout}{result.stderr}")
