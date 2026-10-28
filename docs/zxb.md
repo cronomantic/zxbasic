@@ -234,5 +234,13 @@ This option is really useful and you should enable it for large programs.
 This is very useful to avoid forgetting type declarations. When the type is explicitly declared the compiler can make
 better assumptions and further error checking and optimizations.
 
+* **--arch**
+<br /> The target machine: `zx48k` (the ZX Spectrum, by default), `zxnext` (the ZX Spectrum Next) or `zxv`
+([ZX-V](zxv.md), a 32-bit RISC-V machine; a prototype).
+
+* **-f** or **--output-format**
+<br /> The output format: `bin` (by default), `tap`, `tzx`, `sna`, `z80`, `asm` or `ir` (the intermediate code
+of the compiler). With `--arch=zxv`: `zxv` (by default, a ZX-V program), `asm` (GNU assembler for RISC-V) or `ir`.
+
 This is all you need to know to use the compiler. Proceed to the [ZX BASIC](index.md#Language-Reference) page for a 
 language reference.

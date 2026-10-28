@@ -72,6 +72,8 @@ This is `work in progress`.
 ## Other Architectures
 Boriel BASIC was designed from the base as a Retargeable Compiler, so it should be not hard to extend
 it to other architectures. This is `work in progress`. See [other architectures](other_architectures.md) for more info.
+Besides the ZX Spectrum, it compiles for the ZX Spectrum Next (`--arch=zxnext`) and, as a prototype,
+for [ZX-V](zxv.md) (`--arch=zxv`), a 32-bit RISC-V machine.
 
 ## Contributing
 You can issue a Pull Request to the [GitHub repository](https://github.com/boriel-basic/zxbasic), report bugs in the forum
