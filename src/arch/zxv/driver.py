@@ -167,6 +167,8 @@ def build(asm_text: str, output: str) -> int:
             "-ffreestanding",
             "-fno-builtin",
             "-fno-tree-loop-distribute-patterns",
+            "-ffunction-sections",  # With --gc-sections, only what the program uses
+            "-fdata-sections",
             "-I" + os.path.join(sdk, "include"),
             "-I" + runtime,
             *shlex.split(os.environ.get("ZXV_CFLAGS", "")),

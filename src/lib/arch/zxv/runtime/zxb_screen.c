@@ -1,7 +1,8 @@
 /*
  * zxb_screen.c - A ZX Spectrum screen on ZX-V: 256 x 192 pixels and 32 x 24
- * attributes, shown in mode 0 (page 0), where the Spectrum colours are the
- * first 16 of the palette (ink + 8 * BRIGHT).
+ * attributes, where the Spectrum colours are the first 16 of the palette
+ * (ink + 8 * BRIGHT). It is drawn on the top left corner of the drawing
+ * page (page 0, or the one SCREEN of zxv.bas chooses), in any mode.
  *
  * The bitmap is linear here; the Spectrum memory map (16384-23295, the
  * system variables and the rest up to 65535) is emulated for PEEK and POKE,
@@ -11,8 +12,8 @@
 
 #define COLS        32
 #define ROWS        24
-#define VRAM        ((volatile uint32_t *)(uintptr_t)ZXV_VRAM0_BASE)
-#define WPL         32              /* 32-bit words per line in mode 0 */
+volatile uint32_t *zxb_vram = (volatile uint32_t *)(uintptr_t)ZXV_VRAM0_BASE;  /* The drawing page */
+int zxb_wpl = 32;                   /* Its 32-bit words per line (256 pixels) */
 
 #define CHARS_DEF   15360           /* CHARS: the font is at CHARS + 256 */
 #define UDG_DEF     65368
@@ -48,7 +49,7 @@ static void paint_line(int c, int y)
     uint32_t ink = ((a & 7) | bright) * 0x11111111u;
     uint32_t paper = (((a >> 3) & 7) | bright) * 0x11111111u;
     uint32_t m = expand[bitmap[y * COLS + c]];
-    VRAM[y * WPL + c] = (ink & m) | (paper & ~m);
+    zxb_vram[y * zxb_wpl + c] = (ink & m) | (paper & ~m);
 }
 
 static void paint_cell(int c, int r)
@@ -158,6 +159,9 @@ void zxb_BORDER(int n)
     border = (uint8_t)(n & 7);
     *(volatile uint8_t *)(uintptr_t)ZXV_V_BORDER = border;
 }
+
+/* The colour of the paper (0-15), for zxv.bas */
+int zxb_paper(void) { return ((attr_p >> 3) & 7) | ((attr_p & 0x40) >> 3); }
 
 void zxb_CLS(void)
 {

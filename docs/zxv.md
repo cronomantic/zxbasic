@@ -99,6 +99,29 @@ and parameters of the Z80 ones, but addresses are `ULong`:
 | `alloc.bas`, `memcopy.bas` | `allocate`, `callocate`, `deallocate`, `reallocate`, `memavail`, `maxavail`, `MemMove`, `MemCopy`, `MemSet` |
 | `random.bas`, `round.bas`, `fmath.bas`, `hmirror.bas`, `asc.bas` | `randInt`, `randFixed`, `randomLimit`, `Round`, `fSin`, `fCos`, `fTan`, `fSqrt`, `hMirror`, `asc` |
 | `retrace.bas`, `sinclair.bas` | `waitretrace`; the Sinclair BASIC functions |
+| `zxv.bas` | What is only in ZX-V (below) |
+
+### zxv.bas
+
+The commands of the ZX-V BASIC for its video modes, pages, sprites and the rest,
+with the same names and arguments (see its manual):
+
+| | |
+|---|---|
+| `MODE n[, w, h]`, `PAGE n`, `SCREEN n`, `SCROLL [x, y]`, `REMAP c, n`, `REMAPRESET`, `WAIT [n]` | Modes 0 and 1 (and the big pages of mode 0), the page shown and the one drawn on (double buffer), hardware scroll, colour changes, and a steady pace of frames |
+| `GRAB n, x, y, w, h[, t]`, `GRABSTR n, w, a$`, `SPRITE n, x, y[, f[, c$[, w, h]]]`, `HIT(a, ax, ay, b, bx, by)` | Sprites from the screen or from a string of hex digits, drawn mirrored, with other colours or scaled, and pixel-exact collisions |
+| `BOX c, x, y, w, h`, `DISC c, x, y, r`, `POLY c, x1, y1, ...`, `CLIP [x, y, w, h]`, `PIXEL(x, y)` | Filled shapes, clipping, and the colour of any pixel |
+| `KEY(n)`, `JOY(n)`, `SOUND r, v`, `TIME` | Keys held down, joysticks, the registers of the two AY chips, and the frame counter |
+
+They draw with the graphics engine of the ROM, on the drawing page (`SCREEN`), in
+pixels from its top left corner with the y downwards; colours are 0-15 and 8 is
+transparent in sprites. `PRINT`, `PLOT` and `CLS` draw on the top left 256 x 192
+pixels of the drawing page, in any mode.
+
+Where it is not as in the ZX-V BASIC: the sprite of a string is `GRABSTR` (`GRAB n,
+w, a$` there), `KEY`, `JOY`, `HIT` and `PIXEL` need parentheses, `REMAP` and `SOUND`
+take one pair at a time, `POLY` up to 8 points, and `SCREEN` can not be used with
+`screen.bas`. `examples/zxv/estrellas.bas` is a small game made with it.
 
 `ASM` blocks are RISC-V assembler (GNU syntax). In a function, the parameters
 are at `8(s0)`, `12(s0)`... (4 bytes each, 8 a `Float`), and a function that ends

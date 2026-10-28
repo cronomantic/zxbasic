@@ -41,6 +41,9 @@ uint8_t zxb_vpeek(uint32_t addr);
 void zxb_vpoke(uint32_t addr, uint8_t v);
 void zxb_report(const char *msg);       /* On the bottom line, as the Spectrum reports */
 void zxb_BORDER(int n);
+int zxb_paper(void);                    /* The PAPER colour, 0-15 */
+extern volatile uint32_t *zxb_vram;     /* The drawing page, where the Spectrum screen goes */
+extern int zxb_wpl;                     /* Its 32-bit words per line */
 uint32_t zxb_IN(uint32_t port);         /* The Spectrum ports: keyboard and Kempston */
 
 /* Others */
