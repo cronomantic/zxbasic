@@ -1,4 +1,4 @@
-/* Generado por rom/tools/mkfont.py a partir de ZX-V\rom\font\zxv8x8.txt. */
+/* Generado por rom/tools/mkfont.py a partir de zxv8x8.txt. */
 #include <stdint.h>
 
 const uint8_t zxb_font[96 * 8] = {

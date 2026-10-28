@@ -239,7 +239,7 @@ sub SOUND(r as UByte, v as UByte)
     end asm
 end sub
 
-REM TIME: the frames (50 a second) since the machine started
+REM TIME: the frames (60 a second) since the machine started
 function TIME as ULong
     asm
     zxb_ccall zxb_zxv_time

@@ -51,6 +51,9 @@ uint32_t zxb_IN(uint32_t port);         /* The Spectrum ports: keyboard and Kemp
 /* Others */
 int zxb_key(void);              /* Next key of the queue, or 0 */
 void zxb_echo(const char *s, int n);   /* -DZXB_TEST: to the zxv-cli console */
+/* Spectrum time: fiftieths of a second since the program started, although
+ * ZX-V draws 60 frames a second (ZX-V decision D81). For PAUSE and FRAMES. */
+uint32_t zxb_ticks50(void);
 
 /* ZX Basic error codes (ERROR n): the report is n + 1 */
 #define ERR_OUT_OF_MEMORY       3

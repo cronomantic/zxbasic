@@ -44,7 +44,7 @@ static int ctrl, ctrl_arg;          /* Pending control code and its first parame
 static uint32_t low16(uint32_t a) { return LOW(a) | (uint32_t)LOW(a + 1) << 8; }
 
 static volatile int flash_phase;     /* 1: the FLASH cells have ink and paper swapped */
-static int flash_frames;
+static uint32_t flash_acc;          /* fiftieths of a second x ZXV_FRAME_HZ */
 
 static void paint_line(int c, int y)
 {
@@ -71,14 +71,17 @@ static void paint_all(void)
             paint_cell(c, r);
 }
 
-/* FLASH: every 16 frames (as in the Spectrum) ink and paper swap in the
- * cells with FLASH. Called in the VBLANK interrupt; a cell the program is
- * changing at that moment is painted again by the program afterwards. */
+/* FLASH: every 16/50 s (16 Spectrum frames) ink and paper swap in the
+ * cells with FLASH. Called in the VBLANK interrupt, ZXV_FRAME_HZ times a
+ * second, so it adds 50 each time and swaps on 16 * ZXV_FRAME_HZ (every 19
+ * or 20 frames at 60 Hz). A cell the program is changing at that moment is
+ * painted again by the program afterwards. */
 static void flash_hook(void)
 {
-    if (++flash_frames < 16)
+    flash_acc += 50;
+    if (flash_acc < 16u * ZXV_FRAME_HZ)
         return;
-    flash_frames = 0;
+    flash_acc -= 16u * ZXV_FRAME_HZ;
     flash_phase ^= 1;
     for (int r = 0; r < ROWS; r++)
         for (int c = 0; c < COLS; c++)
@@ -782,7 +785,7 @@ uint8_t zxb_vpeek(uint32_t addr)
     }
     if (addr < LOW_BASE)
         return attrs[addr - 22528];
-    uint32_t f = *(volatile uint32_t *)(uintptr_t)ZXV_SV_FRAMES;
+    uint32_t f = zxb_ticks50();         /* FRAMES: Spectrum time, in fiftieths */
     switch (addr) {
     case 23624: return (uint8_t)(border << 3);
     case 23672: case 23673: case 23674: return (uint8_t)(f >> (8 * (addr - 23672)));

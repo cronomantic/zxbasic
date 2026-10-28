@@ -416,11 +416,32 @@ static int key_waiting(void)
     return *(volatile uint8_t *)(uintptr_t)ZXV_I_KEY_HEAD != *(volatile uint8_t *)(uintptr_t)ZXV_I_KEY_TAIL;
 }
 
-/* PAUSE n: n frames (0: for ever) or until a key is pressed */
+/* Fiftieths of a second from the microsecond clock. The differences are
+ * added up, so its wrap (every 71 minutes) does not matter as long as this
+ * is called more often than that. */
+uint32_t zxb_ticks50(void)
+{
+    static uint32_t last_us, rest_us, ticks;
+    static int started;
+    uint32_t now = zxv_time_us();
+    if (!started) {
+        started = 1;
+        last_us = now;
+    }
+    rest_us += now - last_us;
+    last_us = now;
+    ticks += rest_us / 20000u;
+    rest_us %= 20000u;
+    return ticks;
+}
+
+/* PAUSE n: n Spectrum frames, fiftieths of a second (0: for ever), or until
+ * a key is pressed. It looks at every VBLANK. */
 void zxb_PAUSE(uint32_t n)
 {
     n &= 0xFFFF;
-    for (uint32_t i = 0; n == 0 || i < n; i++) {
+    uint32_t start = zxb_ticks50();
+    while (n == 0 || zxb_ticks50() - start < n) {
         if (key_waiting())
             break;
         zxv_wait_vblank();

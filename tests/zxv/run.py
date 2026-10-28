@@ -10,7 +10,7 @@ Needs the RISC-V toolchain in the PATH and:
 The runtime is built with -DZXB_TEST, so PRINT also goes to the zxv-cli console.
 A test may have NAME.opt with more options for the compiler (--enable-break...),
 NAME.cfg with the zxv-cli options (--frames, --type...), and NAME.pix with
-pixels its screen must have: X,Y=RRGGBB in the 720x576 image.
+pixels its screen must have: X,Y=RRGGBB in the 640x480 image.
 """
 
 import os

@@ -43,6 +43,11 @@ in mode 0, the font is at 15616, and the system variables and the rest (23296-65
 are a block of memory, with some variables updated: `FRAMES`, `CHARS`, `UDG`,
 `COORDS`, `ATTR P`, `ATTR T`, `BORDCR`. `DIM x AS ... AT address` works there too.
 
+ZX-V draws 60 frames a second, but the Spectrum things keep their time: `PAUSE n`
+waits n fiftieths of a second, `FRAMES` (23672) counts fiftieths and `FLASH`
+blinks every 16/50 of a second. `TIME` and `WAIT` (in `zxv.bas`) count ZX-V
+frames, 60 a second.
+
 Above 64K the addresses are real: the ZX-V RAM, its VRAM and its registers.
 
 ## Status
@@ -59,8 +64,8 @@ Works and is tested (`tests/zxv/run.py`):
   `LBOUND` and `UBOUND`; copying them (`a = b`, also arrays of strings).
 - Math functions (the same results as the ZX-V BASIC), `RND`, `RANDOMIZE`.
 - `READ`, `DATA` (constants and expressions) and `RESTORE`.
-- `PRINT` with `AT`, `TAB`, commas, colours, `FLASH` (it blinks every 16 frames,
-  as in the Spectrum), `INVERSE`, `OVER`, UDG and block
+- `PRINT` with `AT`, `TAB`, commas, colours, `FLASH` (it blinks every 16/50 of a
+  second, as in the Spectrum), `INVERSE`, `OVER`, UDG and block
   graphics; `CLS`, `BORDER`, `PLOT`, `DRAW` (with arcs), `CIRCLE`, `BEEP`, `PAUSE`,
   `INKEY$`, `USR`, `PEEK` and `POKE`; `IN` and `OUT` with the Spectrum ports:
   the keyboard (`xxFEh`, the ZX-V matrix is the Spectrum one), the Kempston
@@ -74,7 +79,7 @@ Works and is tested (`tests/zxv/run.py`):
   clears the screen.
 
 Speed: a `FOR` loop of a million turns with `LET s = s + i * 2 + 1` takes 0.34
-seconds (17 frames), about 90 times the ZX-V BASIC.
+seconds (about 20 frames), about 90 times the ZX-V BASIC.
 
 Not yet:
 

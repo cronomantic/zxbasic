@@ -77,6 +77,16 @@
 #define ZXV_VSIZE_TALL          3   /* 256 x 768 */
 
 #define ZXV_LINE_ENTRY_SIZE     8
+/* El cuadro lógico (spec 4.4, D81): 640 x 480, lo mismo que sale por la
+ * pantalla, con el área activa de 512 x 384 en medio. En modo 0 cada píxel es
+ * de 2 x 2: 320 x 240 y 24 líneas de borde arriba. La tabla por línea tiene una
+ * entrada por línea del cuadro, desde la primera del borde de arriba. */
+#define ZXV_FRAME_W             640
+#define ZXV_FRAME_H             480
+#define ZXV_BORDER_X            64      /* a cada lado, en píxeles de modo 1 */
+#define ZXV_BORDER_Y            48      /* arriba y abajo, en líneas de modo 1 */
+#define ZXV_FRAME_LINES(mode)   ((mode) ? ZXV_FRAME_H : ZXV_FRAME_H / 2)
+#define ZXV_BORDER_LINES(mode)  ((mode) ? ZXV_BORDER_Y : ZXV_BORDER_Y / 2)
 #define ZXV_LT_BORDER           0   /* u8,  0xFF = global   */
 #define ZXV_LT_REMAP            1   /* u8,  0xFF = global   */
 #define ZXV_LT_SCROLL_X         2   /* u16, 0xFFFF = global */
@@ -313,7 +323,7 @@
 #define ZXV_H_NAME              0x24    /* char[28] */
 
 /* --- Temporización ------------------------------------------------------ */
-#define ZXV_FRAME_HZ            50
+#define ZXV_FRAME_HZ            60      /* D81; lo del Spectrum, en cincuentavos */
 #define ZXV_CPU_HZ_REF          144000000u
 
 #endif /* ZXV_H */
