@@ -2034,8 +2034,8 @@ class ZXBasicTransformer(Transformer):
             start = make_number(16384, lineno=get_lineno(items[0]))
             length = make_number(6912, lineno=get_lineno(items[0]))
         else:
-            start = make_typecast(Type.uinteger, items[3], get_lineno(items[3]))
-            length = make_typecast(Type.uinteger, items[5], get_lineno(items[5]))
+            start = make_typecast(_TYPE(gl.PTR_TYPE), items[3], get_lineno(items[3]))
+            length = make_typecast(_TYPE(gl.PTR_TYPE), items[5], get_lineno(items[5]))
         p0 = make_sentence(get_lineno(items[0]), items[0], expr, start, length)
         return p0
 
@@ -2050,18 +2050,18 @@ class ZXBasicTransformer(Transformer):
                 return p0
             mark_entry_as_accessed(entry)
             access = entry
-            start = make_unary(get_lineno(items[3]), "ADDRESS", access, type_=Type.uinteger)
+            start = make_unary(get_lineno(items[3]), "ADDRESS", access, type_=_TYPE(gl.PTR_TYPE))
             if entry.class_ == CLASS.array:
                 length = make_number(entry.memsize, lineno=get_lineno(items[3]))
             else:
                 length = make_number(entry.type_.size, lineno=get_lineno(items[3]))
         else:
             access = SYMBOL_TABLE.access_label(gl.ZXBASIC_USER_DATA, get_lineno(items[2]), SYMBOL_TABLE.global_scope)
-            start = make_unary(get_lineno(items[2]), "ADDRESS", access, type_=Type.uinteger)
+            start = make_unary(get_lineno(items[2]), "ADDRESS", access, type_=_TYPE(gl.PTR_TYPE))
             access = SYMBOL_TABLE.access_label(
                 gl.ZXBASIC_USER_DATA_LEN, get_lineno(items[2]), SYMBOL_TABLE.global_scope
             )
-            length = make_unary(get_lineno(items[2]), "ADDRESS", access, type_=Type.uinteger)
+            length = make_unary(get_lineno(items[2]), "ADDRESS", access, type_=_TYPE(gl.PTR_TYPE))
         p0 = make_sentence(get_lineno(items[0]), items[0], items[1], start, length)
         return p0
 
@@ -2085,11 +2085,11 @@ class ZXBasicTransformer(Transformer):
                 start = make_number(16384, lineno=get_lineno(items[2]))
                 length = make_number(6912, lineno=get_lineno(items[2]))
         else:
-            start = make_typecast(Type.uinteger, items[3], get_lineno(items[2]))
+            start = make_typecast(_TYPE(gl.PTR_TYPE), items[3], get_lineno(items[2]))
             if len(items) + 1 == 5:
                 length = make_number(0, lineno=get_lineno(items[2]))
             else:
-                length = make_typecast(Type.uinteger, items[5], get_lineno(items[4]))
+                length = make_typecast(_TYPE(gl.PTR_TYPE), items[5], get_lineno(items[4]))
         p0 = make_sentence(get_lineno(items[2]), items[0], items[1], start, length)
         return p0
 
@@ -2103,16 +2103,16 @@ class ZXBasicTransformer(Transformer):
                 p0 = None
                 return p0
             mark_entry_as_accessed(entry)
-            start = make_unary(get_lineno(items[3]), "ADDRESS", entry, type_=Type.uinteger)
+            start = make_unary(get_lineno(items[3]), "ADDRESS", entry, type_=_TYPE(gl.PTR_TYPE))
             if entry.class_ == CLASS.array:
                 length = make_number(entry.memsize, lineno=get_lineno(items[3]))
             else:
                 length = make_number(entry.type_.size, lineno=get_lineno(items[3]))
         else:
             entry = SYMBOL_TABLE.access_label(gl.ZXBASIC_USER_DATA, get_lineno(items[2]), SYMBOL_TABLE.global_scope)
-            start = make_unary(get_lineno(items[2]), "ADDRESS", entry, type_=Type.uinteger)
+            start = make_unary(get_lineno(items[2]), "ADDRESS", entry, type_=_TYPE(gl.PTR_TYPE))
             entry = SYMBOL_TABLE.access_label(gl.ZXBASIC_USER_DATA_LEN, get_lineno(items[2]), SYMBOL_TABLE.global_scope)
-            length = make_unary(get_lineno(items[2]), "ADDRESS", entry, type_=Type.uinteger)
+            length = make_unary(get_lineno(items[2]), "ADDRESS", entry, type_=_TYPE(gl.PTR_TYPE))
         p0 = make_sentence(get_lineno(items[2]), items[0], items[1], start, length)
         return p0
 
