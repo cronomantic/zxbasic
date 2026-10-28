@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_mem.c - Dynamic memory for strings and arrays: first fit, with the
  * free neighbours joined when a block is freed.

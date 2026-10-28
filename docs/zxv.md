@@ -129,6 +129,14 @@ with an `ASM` block returns what it leaves in `a0` (`a0` and `a1` for a `Float`)
 `zxb_ccall function` calls a C function of the runtime (it aligns the stack, as
 the ABI requires): that is how the libraries are written.
 
+## Licence
+
+The runtime (`src/lib/arch/zxv/runtime`) and the libraries are MIT, like the rest
+of `src/lib`, so compiled programs can have any licence, closed ones too. The
+runtime has two files of ZX-V (`bmath.c` and `fp.c`, with the fdlibm notice), and
+programs are linked with the start-up code, headers and font of the ZX-V SDK: all
+MIT as well.
+
 ## Tests
 
 ```sh

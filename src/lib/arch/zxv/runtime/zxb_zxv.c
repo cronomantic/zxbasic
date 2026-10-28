@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_zxv.c - What is only in ZX-V, for zxv.bas: the video modes and pages,
  * scroll and colour changes, sprites, filled shapes, the keys, joysticks

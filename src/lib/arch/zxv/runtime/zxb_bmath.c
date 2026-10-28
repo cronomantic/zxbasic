@@ -1,4 +1,6 @@
-/* Copied from ZX-V (rom/src/basic/bmath.c), so compiled programs give the same results as its BASIC. */
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic.
+ * Copied from ZX-V (rom/src/basic/bmath.c, MIT like its SDK), so compiled
+ * programs give the same results as its BASIC. */
 /*
  * bmath.c - Funciones matemáticas en double para el BASIC.
  *

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_lib.c - What the ZX-V versions of the libraries (stdlib/*.bas) call:
  * their ASM blocks call these functions with zxb_ccall.

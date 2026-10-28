@@ -1,4 +1,6 @@
-/* Copied from ZX-V (rom/src/basic/fp.c), so compiled programs give the same results as its BASIC. */
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic.
+ * Copied from ZX-V (rom/src/basic/fp.c, MIT like its SDK), so compiled
+ * programs give the same results as its BASIC. */
 /*
  * fp.c - Números: formato de PRINT, lectura de literales y la forma de
  * 5 bytes del Spectrum.

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_str.c - Strings: a 16-bit length and the characters, in the heap.
  *

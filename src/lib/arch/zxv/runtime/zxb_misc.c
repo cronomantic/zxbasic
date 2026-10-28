@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_misc.c - Start and end of the program, numbers, arrays, keyboard,
  * sound and errors.

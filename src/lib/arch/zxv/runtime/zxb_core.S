@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_core.S - Memory accesses of the compiled code that the runtime
  * emulates: below 64K (the ZX Spectrum memory map) or misaligned.

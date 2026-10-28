@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_screen.c - A ZX Spectrum screen on ZX-V: 256 x 192 pixels and 32 x 24
  * attributes, where the Spectrum colours are the first 16 of the palette

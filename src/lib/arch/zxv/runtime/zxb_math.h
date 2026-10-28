@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_math.h - What zxb_bmath.c and zxb_fp.c (copied from the ZX-V ROM) need.
  */
