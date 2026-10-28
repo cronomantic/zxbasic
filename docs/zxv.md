@@ -5,14 +5,14 @@ RISC-V machine (RV32IMAC at 144 MHz) with a ZX Spectrum style BASIC. The output
 is a `.zxv` native program that its BASIC loads with `LOAD "name"`.
 
 ```sh
-export ZXV_SDK=/path/to/ZX-V/sdk          # crt0.S, zxv.ld, include/, tools/elf2zxv.py
 python3 zxbc.py --arch=zxv program.bas    # program.zxv
 python3 zxbc.py --arch=zxv -f asm program.bas   # only the assembler (GNU as)
 ```
 
-It needs the RISC-V GCC toolchain (`riscv64-unknown-elf-gcc`; `ZXV_CROSS` changes
-the prefix) and the ZX-V repository: the runtime uses its SDK and the font and
-number routines of its ROM.
+It only needs the RISC-V GCC toolchain (`riscv64-unknown-elf-gcc`; `ZXV_CROSS`
+changes the prefix), the one of the ZX-V SDK. The parts of that SDK the programs
+are linked with, and the font of the machine, are in `src/lib/arch/zxv/sdk` and
+`src/lib/arch/zxv/runtime` (`tools/zxv_sdk_sync.py PATH/TO/ZX-V` updates them).
 
 ## How it works
 
@@ -134,13 +134,13 @@ the ABI requires): that is how the libraries are written.
 The runtime (`src/lib/arch/zxv/runtime`) and the libraries are MIT, like the rest
 of `src/lib`, so compiled programs can have any licence, closed ones too. The
 runtime has two files of ZX-V (`bmath.c` and `fp.c`, with the fdlibm notice), and
-programs are linked with the start-up code, headers and font of the ZX-V SDK: all
-MIT as well.
+programs are linked with the start-up code, headers and font of the ZX-V SDK
+(`src/lib/arch/zxv/sdk`): all MIT as well.
 
 ## Tests
 
 ```sh
-export ZXV_SDK=/path/to/ZX-V/sdk ZXV_CLI=/path/to/zxv-cli ZXV_ROM=/path/to/rom.bin
+export ZXV_CLI=/path/to/zxv-cli ZXV_ROM=/path/to/rom.bin
 python3 tests/zxv/run.py            # all; NAME... for some; --update writes NAME.out
 ```
 

@@ -5,10 +5,10 @@
 # See https://www.gnu.org/licenses/agpl-3.0.html for details.
 # --------------------------------------------------------------------
 
-"""ZX-V output: GNU assembler, linked with the C runtime and the ZX-V SDK into a .zxv program.
+"""ZX-V output: GNU assembler, linked with the C runtime and the parts of the ZX-V SDK it needs
+(src/lib/arch/zxv/sdk) into a .zxv program.
 
-Needs the RISC-V GCC toolchain and the ZX-V SDK:
-  ZXV_SDK     the sdk folder of ZX-V (crt0.S, zxv.ld, include/, tools/elf2zxv.py)
+Needs the RISC-V GCC toolchain:
   ZXV_CROSS   the toolchain prefix (riscv64-unknown-elf- by default)
   ZXV_CFLAGS  more options for the runtime (-DZXB_TEST: PRINT also goes to the zxv-cli --test console)
 """
@@ -24,10 +24,13 @@ from src.api import errmsg
 from src.api import global_ as gl
 from src.api.config import OPTIONS
 from src.api.utils import open_file
+from src.arch.zxv.zxvfile import ZxvError, zxv_from_elf
 from src.zxbc.args_parser import FileType
 
 MARCH = "rv32imac_zicsr_zifencei_zba_zbb_zbs_zbkb_zcb"
-RUNTIME_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "arch", "zxv", "runtime")
+LIB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "arch", "zxv")
+RUNTIME_DIR = os.path.join(LIB_DIR, "runtime")
+SDK_DIR = os.path.join(LIB_DIR, "sdk")
 
 PROLOGUE = """\
 \t.option norelax
@@ -128,12 +131,8 @@ def run(cmd: list[str]) -> bool:
 
 
 def build(asm_text: str, output: str) -> int:
-    sdk = os.environ.get("ZXV_SDK")
-    if not sdk or not os.path.isfile(os.path.join(sdk, "zxv.ld")):
-        errmsg.error(0, "zxv: set ZXV_SDK to the sdk folder of ZX-V (or use -f asm)")
-        return 1
     cross = os.environ.get("ZXV_CROSS", "riscv64-unknown-elf-")
-    rom = os.path.join(sdk, "..", "rom")
+    sdk = os.path.abspath(SDK_DIR)
     runtime = os.path.abspath(RUNTIME_DIR)
     sources = sorted(
         os.path.join(runtime, x) for x in os.listdir(runtime) if x.endswith(".c") or x.endswith(".S")
@@ -143,18 +142,6 @@ def build(asm_text: str, output: str) -> int:
         prog = os.path.join(tmp, "prog.s")
         with open(prog, "wt", encoding="utf-8") as f:
             f.write(asm_text)
-
-        font = os.path.join(tmp, "font.c")
-        if not run(
-            [
-                sys.executable,
-                os.path.join(rom, "tools", "mkfont.py"),
-                os.path.join(rom, "font", "zxv8x8.txt"),
-                font,
-                "zxb_font",
-            ]
-        ):
-            return 1
 
         elf = os.path.join(tmp, "prog.elf")
         cmd = [
@@ -182,7 +169,6 @@ def build(asm_text: str, output: str) -> int:
             os.path.join(sdk, "crt0.S"),
             os.path.join(sdk, "zxvlib.c"),
             *sources,
-            font,
             prog,
             "-lgcc",
             "-o",
@@ -192,8 +178,14 @@ def build(asm_text: str, output: str) -> int:
             return 1
 
         name = os.path.splitext(os.path.basename(output))[0][:27]
-        if not run([sys.executable, os.path.join(sdk, "tools", "elf2zxv.py"), elf, output, "--name", name]):
+        try:
+            with open(elf, "rb") as f:
+                zxv = zxv_from_elf(f.read(), name)
+        except ZxvError as e:
+            errmsg.error(0, f"zxv: {e}")
             return 1
+        with open_file(output, "wb") as f:
+            f.write(zxv)
 
         keep = os.environ.get("ZXV_KEEP_ELF")
         if keep:

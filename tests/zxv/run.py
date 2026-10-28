@@ -4,7 +4,6 @@
     run.py [--update] [NAME...]
 
 Needs the RISC-V toolchain in the PATH and:
-  ZXV_SDK   the sdk folder of ZX-V
   ZXV_CLI   zxv-cli (the ZX-V emulator without window)
   ZXV_ROM   the ROM (optional: the one of the emulator otherwise)
 
