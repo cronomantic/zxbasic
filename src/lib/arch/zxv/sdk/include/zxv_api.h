@@ -44,6 +44,7 @@ static inline void zxv_beeper_event(int level) { ZXV_API_FN(ZXV_API_BEEPER_EVENT
 /* Una escritura en el AY que suena a la hora t_us (la de zxv_time_us) más
  * ZXV_BEEP_LATENCY_US; con la cola llena, espera. Para la música digitalizada. */
 static inline void zxv_ay_event(uint32_t t_us, int reg, int val) { ZXV_API_FN(ZXV_API_AY_EVENT, void (*)(uint32_t, int, int))(t_us, reg, val); }
+static inline void zxv_beeper_event_at(uint32_t t_us, int level) { ZXV_API_FN(ZXV_API_BEEPER_EVENT_AT, void (*)(uint32_t, int))(t_us, level); }
 
 static inline int zxv_file_open(const char *name, uint32_t flags) { return ZXV_API_FN(ZXV_API_FILE_OPEN, int (*)(const char *, uint32_t))(name, flags); }
 static inline int zxv_file_read(int f, void *buf, uint32_t n) { return ZXV_API_FN(ZXV_API_FILE_READ, int (*)(int, void *, uint32_t))(f, buf, n); }

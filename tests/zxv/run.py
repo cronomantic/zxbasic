@@ -9,8 +9,9 @@ Needs the RISC-V toolchain in the PATH and:
 
 The runtime is built with -DZXB_TEST, so PRINT also goes to the zxv-cli console.
 A test may have NAME.opt with more options for the compiler (--enable-break...),
-NAME.cfg with the zxv-cli options (--frames, --type...), and NAME.pix with
-pixels its screen must have: X,Y=RRGGBB in the 640x480 image.
+NAME.cfg with the zxv-cli options (--frames, --type...), NAME.pix with
+pixels its screen must have: X,Y=RRGGBB in the 640x480 image, and a folder
+NAME.sd with files to put on the SD card.
 """
 
 import os
@@ -46,7 +47,11 @@ def run_test(name: str, update: bool) -> bool:
     bas = os.path.join(HERE, name + ".bas")
     with tempfile.TemporaryDirectory(prefix="zxv-test-") as tmp:
         sd = os.path.join(tmp, "sd")
-        os.mkdir(sd)
+        files = os.path.join(HERE, name + ".sd")
+        if os.path.isdir(files):
+            shutil.copytree(files, sd)
+        else:
+            os.mkdir(sd)
         prog = os.path.join(sd, "prog.zxv")
         env = dict(os.environ, ZXV_CFLAGS="-DZXB_TEST")
         zxbc_opts = []

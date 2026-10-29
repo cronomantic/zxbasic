@@ -141,6 +141,8 @@ with the same names and arguments (see its manual):
 | `GRAB n, x, y, w, h[, t]`, `GRABSTR n, w, a$`, `SPRITE n, x, y[, f[, c$[, w, h]]]`, `HIT(a, ax, ay, b, bx, by)` | Sprites from the screen or from a string of hex digits, drawn mirrored, with other colours or scaled, and pixel-exact collisions |
 | `BOX c, x, y, w, h`, `DISC c, x, y, r`, `POLY c, x1, y1, ...`, `CLIP [x, y, w, h]`, `PIXEL(x, y)` | Filled shapes, clipping, and the colour of any pixel |
 | `KEY(n)`, `JOY(n)`, `SOUND r, v`, `TIME` | Keys held down, joysticks, the registers of the two AY chips, and the frame counter |
+| `MUSICLOAD f$`, `MUSICPLAY`, `MUSICSTOP`, `MUSICPAUSE`, `MUSICCONTINUE`, `MUSIC` | Music made with a tracker (a PT3 module from `zxv-tracker` or Vortex Tracker, a TurboSound, PT2, STC, ASC or PSG), in the background while the program goes on |
+| `SFXLOAD f$`, `SFX n[, c]`, `SFXSTOP`, `SFXPLAYING` | Sound effects of an AYFX bank (`.afb`) or a single one (`.afx`), on a free channel or on channel `c` (0-5) |
 
 They draw with the graphics engine of the ROM, on the drawing page (`SCREEN`), in
 pixels from its top left corner with the y downwards; colours are 0-15 and 8 is
@@ -149,8 +151,18 @@ pixels of the drawing page, in any mode.
 
 Where it is not as in the ZX-V BASIC: the sprite of a string is `GRABSTR` (`GRAB n,
 w, a$` there), `KEY`, `JOY`, `HIT` and `PIXEL` need parentheses, `REMAP` and `SOUND`
-take one pair at a time, `POLY` up to 8 points, and `SCREEN` can not be used with
-`screen.bas`.
+take one pair at a time, `POLY` up to 8 points, `SCREEN` can not be used with
+`screen.bas`, and the music and effects are `MUSICLOAD f$` and `SFXLOAD f$`
+(`LOAD f$ MUSIC` and `SFX` there), `MUSICPLAY`, `MUSICSTOP`... and `SFXPLAYING`
+(the function `SFX` there).
+
+The music and the effects play with the music library of the ZX-V SDK
+(`sdk/music`, the same code as in the ROM and in `zxv-tracker`), from the frame
+hook: the program goes on while they play, until `MUSICSTOP` or the end of the
+program. The module and the bank go in the heap. While something plays, `BEEP`
+goes as far ahead as the music (35 ms), with the `beeper_event_at` function of
+the ZX-V API (55, in the ROMs after ZX-V 0.5.0; in older ones `BEEP` is silent
+while the music plays), so the timed queue keeps its order.
 
 `ASM` blocks are RISC-V assembler (GNU syntax). In a function, the parameters
 are at `8(s0)`, `12(s0)`... (4 bytes each, 8 a `Float`), and a function that ends
@@ -163,8 +175,8 @@ the ABI requires): that is how the libraries are written.
 The runtime (`src/lib/arch/zxv/runtime`) and the libraries are MIT, like the rest
 of `src/lib`, so compiled programs can have any licence, closed ones too. The
 runtime has two files of ZX-V (`bmath.c` and `fp.c`, with the fdlibm notice), and
-programs are linked with the start-up code, headers and font of the ZX-V SDK
-(`src/lib/arch/zxv/sdk`): all MIT as well.
+programs are linked with the start-up code, headers, font and music library of
+the ZX-V SDK (`src/lib/arch/zxv/sdk`): all MIT as well.
 
 ## Tests
 
@@ -174,5 +186,6 @@ python3 tests/zxv/run.py            # all; NAME... for some; --update writes NAM
 ```
 
 Each test is a program (`NAME.bas`) and what it prints (`NAME.out`), and maybe the
-colour of some pixels of its screen (`NAME.pix`). The runtime is built with
+colour of some pixels of its screen (`NAME.pix`) and the files of its SD card (a
+folder, `NAME.sd`). The runtime is built with
 `-DZXB_TEST`, so what the program prints also goes to the `zxv-cli --test` console.

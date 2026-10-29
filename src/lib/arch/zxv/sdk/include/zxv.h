@@ -251,6 +251,7 @@
 #define ZXV_API_SPR_DRAW_SCALED 52
 #define ZXV_API_TEXT_COLORS     53
 #define ZXV_API_TEXT_AT         54
+#define ZXV_API_BEEPER_EVENT_AT 55
 
 /* --- Reloj (spec §7.9) --------------------------------------------------- */
 #define ZXV_CLOCK_SIZE          8

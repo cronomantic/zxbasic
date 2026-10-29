@@ -144,6 +144,9 @@ def build(asm_text: str, output: str) -> int:
     sources = sorted(
         os.path.join(runtime, x) for x in os.listdir(runtime) if x.endswith(".c") or x.endswith(".S")
     )
+    # The music library of the SDK (MUSICPLAY, SFX): with --gc-sections, only if the program uses it
+    music = os.path.join(sdk, "music")
+    sources += sorted(os.path.join(music, x) for x in os.listdir(music) if x.endswith(".c"))
 
     with tempfile.TemporaryDirectory(prefix="zxb-zxv-") as tmp:
         prog = os.path.join(tmp, "prog.s")
@@ -165,6 +168,7 @@ def build(asm_text: str, output: str) -> int:
             "-fdata-sections",
             "-I" + os.path.join(sdk, "include"),
             "-I" + runtime,
+            "-I" + music,
             *shlex.split(os.environ.get("ZXV_CFLAGS", "")),
             "-nostdlib",
             "-nostartfiles",

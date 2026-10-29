@@ -45,6 +45,8 @@ static uint32_t low16(uint32_t a) { return LOW(a) | (uint32_t)LOW(a + 1) << 8; }
 
 static volatile int flash_phase;     /* 1: the FLASH cells have ink and paper swapped */
 static uint32_t flash_acc;          /* fiftieths of a second x ZXV_FRAME_HZ */
+/* The music of zxb_music.c, once the program uses it: from this frame hook */
+void (*zxb_frame_music)(void);
 
 static void paint_line(int c, int y)
 {
@@ -78,6 +80,8 @@ static void paint_all(void)
  * painted again by the program afterwards. */
 static void flash_hook(void)
 {
+    if (zxb_frame_music)
+        zxb_frame_music();
     flash_acc += 50;
     if (flash_acc < 16u * ZXV_FRAME_HZ)
         return;

@@ -448,6 +448,19 @@ void zxb_PAUSE(uint32_t n)
     }
 }
 
+/* While the music of zxb_music.c plays, as far ahead as it goes: the
+ * timed queue must keep its order (ZX-V spec 5.4) */
+volatile uint32_t zxb_beeper_lead;
+
+static void beeper(int level)
+{
+    uint32_t lead = zxb_beeper_lead;
+    if (lead)
+        zxv_beeper_event_at(zxv_time_us() + lead, level);
+    else
+        zxv_beeper_event(level);
+}
+
 /* BEEP duration, pitch: a square wave through the beeper queue */
 void zxb_BEEP(double dur, double pitch)
 {
@@ -460,12 +473,12 @@ void zxb_BEEP(double dur, double pitch)
     int level = 0;
     while (t + half <= total) {
         level ^= 1;
-        zxv_beeper_event(level);
+        beeper(level);
         t += half;
         while (zxv_time_us() - start < t)
             ;
     }
-    zxv_beeper_event(0);
+    beeper(0);
 }
 
 /* USR address: native code (ilp32), returns a0 */

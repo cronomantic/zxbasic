@@ -3,8 +3,9 @@
 '
 ' zxv.bas: what is only in ZX-V, with the names and arguments of the ZX-V
 ' BASIC commands (its manual, "Modos de vídeo y efectos", "Sprites, mapas de
-' tiles y gráficos rápidos", KEY, JOY and SOUND). The runtime (zxb_zxv.c)
-' calls the engine of the ROM.
+' tiles y gráficos rápidos", KEY, JOY, SOUND, MUSIC and SFX). The runtime
+' (zxb_zxv.c) calls the engine of the ROM, and zxb_music.c the music library
+' of the ZX-V SDK.
 '
 ' The fast graphics (SPRITE, BOX, DISC, POLY, PIXEL...) count pixels from the
 ' top left corner of the drawing page, with the y downwards; colours are
@@ -17,6 +18,9 @@
 '  - REMAP and SOUND take one pair at a time, and REMAP alone is REMAPRESET.
 '  - POLY takes up to 8 points.
 '  - SCREEN can not be used with screen.bas (its SCREEN$ is also screen).
+'  - The music and the effects: MUSICLOAD f$ and SFXLOAD f$ (LOAD f$ MUSIC
+'    and SFX there), MUSICPLAY, MUSICSTOP, MUSICPAUSE and MUSICCONTINUE, and
+'    the function SFXPLAYING (SFX alone there).
 ' ----------------------------------------------------------------
 
 #ifndef __LIBRARY_ZXV__
@@ -243,6 +247,91 @@ REM TIME: the frames (60 a second) since the machine started
 function TIME as ULong
     asm
     zxb_ccall zxb_zxv_time
+    end asm
+end function
+
+REM MUSICLOAD f$: loads a module made with a tracker (without an extension,
+REM f$.pt3): Pro Tracker 3 or Vortex Tracker II (.pt3, what zxv-tracker
+REM saves), a TurboSound (two modules, one on each AY chip), Pro Tracker 2,
+REM Sound Tracker, ASC Sound Master or a PSG dump. It goes in the heap.
+sub MUSICLOAD(ByVal f$ as String)
+    asm
+    lw a0, 8(s0)
+    zxb_ccall zxb_music_load
+    end asm
+end sub
+
+REM MUSICPLAY: plays the module in the background while the program goes on,
+REM and at its end goes back to its loop position, for ever. It plays on the
+REM first AY chip (a TurboSound, on both), until MUSICSTOP or the end of the
+REM program.
+sub MUSICPLAY
+    asm
+    zxb_ccall zxb_music_play
+    end asm
+end sub
+
+REM MUSICSTOP: stops the music
+sub MUSICSTOP
+    asm
+    zxb_ccall zxb_music_stop
+    end asm
+end sub
+
+REM MUSICPAUSE: silences the music; MUSICCONTINUE goes on where it was
+sub MUSICPAUSE
+    asm
+    li a0, 1
+    zxb_ccall zxb_music_pause
+    end asm
+end sub
+
+sub MUSICCONTINUE
+    asm
+    li a0, 0
+    zxb_ccall zxb_music_pause
+    end asm
+end sub
+
+REM MUSIC: 1 while the music plays, 0 if not
+function MUSIC as UByte
+    asm
+    zxb_ccall zxb_music_on
+    end asm
+end function
+
+REM SFXLOAD f$: loads an AYFX bank of sound effects (without an extension,
+REM f$.afb: what the effects tab of zxv-tracker or the AY Sound FX Editor
+REM saves), or a single effect (.afx). It goes in the heap.
+sub SFXLOAD(ByVal f$ as String)
+    asm
+    lw a0, 8(s0)
+    zxb_ccall zxb_sfx_load
+    end asm
+end sub
+
+REM SFX n[, c]: plays effect n of the bank (the first is 0) without waiting,
+REM on a free channel of the chip the music does not use, or on channel c:
+REM 0 to 2 are A, B and C of the first chip and 3 to 5 those of the second
+sub SFX(n as UByte, c as Byte = -1)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    zxb_ccall zxb_sfx
+    end asm
+end sub
+
+REM SFXSTOP: stops all the effects
+sub SFXSTOP
+    asm
+    zxb_ccall zxb_sfx_stop
+    end asm
+end sub
+
+REM SFXPLAYING: 1 while any effect plays
+function SFXPLAYING as UByte
+    asm
+    zxb_ccall zxb_sfx_on
     end asm
 end function
 

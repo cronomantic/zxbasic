@@ -1,0 +1,12 @@
+loaded 0
+play 1
+pause 0
+continue 1
+sfx 1
+sfx stop 0
+stop 0
+afx 1
+again 1
+
+ERROR B Integer out of range
+[exit 11]
