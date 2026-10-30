@@ -152,14 +152,10 @@ void zxb_ERROR(int code)
 /* An error with its own report (the ZX-V BASIC ones, such as T File not found) */
 void zxb_fail(const char *msg) { fail(msg, 100); }
 
-/* CHECK_BREAK line (--enable-break), after each line: Esc (BREAK) stops the
- * program. zxb_line has the line already: each statement sets it before it runs. */
-void zxb_CHECK_BREAK(uint32_t line)
-{
-    (void)line;
-    if ((*(volatile uint8_t *)(uintptr_t)(ZXV_I_KEYMAP + (0x29 >> 3)) >> (0x29 & 7)) & 1)
-        zxb_ERROR(20);                  /* L BREAK into program */
-}
+/* CHECK_BREAK (--enable-break) is __zxb_chkbreak in zxb_core.S, which keeps the
+ * registers; it reads Esc (key 0x29) there. zxb_line has the line already: each
+ * statement sets it before it runs. */
+_Static_assert(ZXV_I_KEYMAP + (0x29 >> 3) == 0x20000515, "ZXB_BREAK_KEY in zxb_core.S");
 
 void zxb_STOP(int code)
 {

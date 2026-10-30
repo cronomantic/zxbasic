@@ -126,3 +126,24 @@ __zxb_call_basic:
     lw s1, 4(sp)
     addi sp, sp, 16
     ret
+
+/* __zxb_chkbreak: CHECK_BREAK (--enable-break), after each line: Esc (BREAK)
+ * stops the program. It keeps every register, as CHECK_BREAK does in the Z80:
+ * a function whose body is an ASM block has its result in a0 (a1) then. */
+    .equ ZXB_BREAK_KEY, 0x20000515      /* ZXV_I_KEYMAP + (0x29 >> 3): Esc (0x29) */
+    .equ ZXB_BREAK_BIT, 1 << (0x29 & 7)
+    .globl __zxb_chkbreak
+__zxb_chkbreak:
+    addi sp, sp, -4
+    sw t0, 0(sp)
+    li t0, ZXB_BREAK_KEY
+    lbu t0, 0(t0)
+    andi t0, t0, ZXB_BREAK_BIT
+    bnez t0, 1f
+    lw t0, 0(sp)
+    addi sp, sp, 4
+    ret
+1:
+    andi sp, sp, -16
+    li a0, 20                           /* L BREAK into program */
+    call zxb_ERROR                      /* It does not return */

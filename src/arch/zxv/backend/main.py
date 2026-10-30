@@ -78,7 +78,6 @@ RUNTIME_SIMPLE = {
     "PRINTF16",
     "PRINTF",
     "STR_FAST",
-    "CHECK_BREAK",
     "VAL",
     "ASC",
     "MEM_FREE",
@@ -886,6 +885,8 @@ class Backend(BackendInterface):
             return self.on_goto(name)
         if name == "CHR":
             return self.chr()
+        if name == "CHECK_BREAK":  # It keeps every register
+            return self.asm("\tcall __zxb_chkbreak")
 
         stack = RUNTIME_SIGNATURES.get(name)
         if stack is None and name not in RUNTIME_SIMPLE:

@@ -53,9 +53,9 @@ class ZxvTranslation:
             yield self.visit(child)
 
     def visit_CHKBREAK(self, node):
-        # With --enable-break: Esc (BREAK) stops the program
+        # With --enable-break: Esc (BREAK) stops the program. No line parameter (zxb_line has
+        # it), so a0 and a1 keep the result a function's ASM block may have left there
         if self.PREV_TOKEN != node.token:
-            self.ic_fparam(gl.PTR_TYPE, node.children[0].t)
             self.runtime_call(RuntimeLabel.CHECK_BREAK, 0)
 
     def emit_jump_tables(self):
