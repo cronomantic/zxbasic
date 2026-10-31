@@ -92,24 +92,28 @@ Not yet:
 ## Files
 
 `SAVE`, `LOAD` and `VERIFY` work on the SD card of ZX-V (or the emulator's card
-folder), as in its BASIC: a name without extension gets `.tap`, a Spectrum tape
-with a `CODE` header and the data, that the ZX-V BASIC (and Spectrum emulators)
-load too; with another extension, the bytes as they are.
+folder), as in its BASIC: the bytes as they are, and a name without extension
+gets `.scr` for the screen and `.bin` for the rest (`CODE` and `DATA`). `LOAD`
+without extension tries that one and then `.tap`. A name ending in `.tap` is a
+Spectrum tape, with a `CODE` header and the data, for Spectrum emulators.
 
 ```basic
-SAVE "screen" SCREEN$              ' screen.tap
-SAVE "level.bin" CODE @map(0), 512 ' 512 raw bytes
-LOAD "level.bin" CODE @map(0)      ' raw bytes need the address
+SAVE "screen" SCREEN$              ' screen.scr, the 6912 bytes
+SAVE "level" CODE @map(0), 512     ' level.bin, 512 raw bytes
+LOAD "level" CODE @map(0)          ' raw bytes need the address
 LOAD "screen" SCREEN$
 VERIFY "screen" SCREEN$
+SAVE "level.tap" CODE @map(0), 512 ' a Spectrum tape
+LOAD "level.tap" CODE              ' back where it was saved
 ```
 
-`LOAD ... CODE` without an address loads the block where it was saved. A tape
-header has 16 bits for the address: above 64K (the ZX-V memory), its second
-parameter, 32768 for `CODE` in the Spectrum, keeps the high half. `DATA` saves a
-variable (`SAVE "x" DATA v`), or all of them without a name; as in the Z80 target,
-an array needs `CODE`. A missing file stops the program with `T File not
-found`, as in the ZX-V BASIC.
+A `.bin` does not know where it goes, so `LOAD ... CODE` needs the address; a
+`.tap` keeps it, and loads the block where it was saved. A tape header has 16
+bits for the address: above 64K (the ZX-V memory), its second parameter, 32768
+for `CODE` in the Spectrum, keeps the high half; and a tape block is 64 KB at
+most. `DATA` saves the memory of a variable (`SAVE "x" DATA v`), or all of them
+without a name; as in the Z80 target, an array needs `CODE`. A missing file
+stops the program with `T File not found`, as in the ZX-V BASIC.
 
 ## Libraries
 

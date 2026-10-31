@@ -2,11 +2,13 @@
 /*
  * zxb_files.c - SAVE, LOAD and VERIFY on the SD card. ZX Basic turns CODE,
  * SCREEN$ and DATA into a block of memory (an address and a length); they
- * are written as the ZX-V BASIC does: a name without extension gets .tap,
- * a Spectrum tape (a CODE header and the data), so the BASIC and Spectrum
- * emulators can load it too; with another extension, the bytes as they are.
- * A tape header has 16 bits for the address: above 64K, its second
- * parameter (32768 for CODE in the Spectrum) is the high half.
+ * are written as the ZX-V BASIC does (its decision D88): the bytes as they
+ * are, and a name without extension gets .scr for the screen (the block
+ * 16384, 6912) and .bin for the rest. LOAD without extension tries that one
+ * and then .tap. A .tap is a Spectrum tape (a CODE header and the data), for
+ * Spectrum emulators and to load it back where it was saved; its header has
+ * 16 bits for the address: above 64K, its second parameter (32768 for CODE
+ * in the Spectrum) is the high half.
  */
 #include "zxb.h"
 
@@ -17,34 +19,53 @@
 void zxb_ERROR(int code);
 void zxb_fail(const char *msg);
 
-/* The C name of the file, from the BASIC string (freed); 1 if it is a tape */
-static int file_name(zstr s, char name[NAME_MAX + 4], char tname[10])
+/* The C name of the file, from the BASIC string (freed), and the name of a
+ * tape header: without the folder or the extension, as in the ZX-V BASIC.
+ * Returns 1 if the name has no extension. */
+static int file_name(zstr s, char name[NAME_MAX + 8], char tname[10])
 {
     uint32_t n = zstr_len(s);
     if (n == 0 || n >= NAME_MAX) {
         zxb_free(s);
         zxb_ERROR(14);                  /* F Invalid file name */
     }
-    int dot = 0;
+    uint32_t from = 0, to = n;
     for (uint32_t i = 0; i < n; i++) {
         name[i] = (char)s[2 + i];
         if (name[i] == '.')
-            dot = 1;
+            to = i;
         else if (name[i] == '/' || name[i] == ':')
-            dot = 0;
+            from = i + 1, to = n;
     }
-    for (int i = 0; i < 10; i++)
-        tname[i] = (uint32_t)i < n ? (char)s[2 + i] : ' ';
+    for (uint32_t i = 0; i < 10; i++)
+        tname[i] = from + i < to ? (char)s[2 + from + i] : ' ';
     zxb_free(s);
     name[n] = 0;
-    if (!dot) {
-        name[n] = '.', name[n + 1] = 't', name[n + 2] = 'a', name[n + 3] = 'p', name[n + 4] = 0;
-        return 1;
-    }
-    if (n <= 4)
-        return 0;
-    char a = name[n - 4], b = name[n - 3] | 0x20, c = name[n - 2] | 0x20, d = name[n - 1] | 0x20;
-    return a == '.' && b == 't' && c == 'a' && d == 'p';
+    return to == n;
+}
+
+/* Adds .ext (three letters) to a name without extension */
+static void add_ext(char *name, const char *ext)
+{
+    uint32_t n = 0;
+    while (name[n])
+        n++;
+    name[n] = '.', name[n + 1] = ext[0], name[n + 2] = ext[1], name[n + 3] = ext[2], name[n + 4] = 0;
+}
+
+static int is_tap(const char *name)
+{
+    uint32_t n = 0;
+    while (name[n])
+        n++;
+    return n > 4 && name[n - 4] == '.' && (name[n - 3] | 0x20) == 't' && (name[n - 2] | 0x20) == 'a' &&
+           (name[n - 1] | 0x20) == 'p';
+}
+
+/* The extension of a block without one: the screen, .scr; the rest, .bin */
+static const char *block_ext(uint32_t start, uint32_t len)
+{
+    return start == 16384 && len == 6912 ? "scr" : "bin";
 }
 
 static void file_error(int e)
@@ -101,11 +122,13 @@ static void write_block(int f, uint8_t flag, const uint8_t *hdr, uint32_t start,
 /* SAVE name CODE start, len (and SCREEN$ and DATA) */
 void zxb_SAVE_CODE(uint32_t len, uint32_t start, zstr s)
 {
-    char name[NAME_MAX + 4], tname[10];
-    int tape = file_name(s, name, tname);
+    char name[NAME_MAX + 8], tname[10];
+    if (file_name(s, name, tname))
+        add_ext(name, block_ext(start, len));
+    int tape = is_tap(name);
     if (len == 0)
         zxb_ERROR(9);                   /* A Invalid argument */
-    if (len > 65535)
+    if (tape && len > 65535)            /* a tape block, at most */
         zxb_ERROR(ERR_RANGE);
     check_range(start, len);
     int f = zxv_file_open(name, ZXV_O_WRITE | ZXV_O_CREATE | ZXV_O_TRUNC);
@@ -145,10 +168,25 @@ static int read_n(int f, uint8_t *buf, uint32_t n)
  * Without start (0), the address of the tape header; without len (0), all. */
 void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
 {
-    char name[NAME_MAX + 4], tname[10];
-    int tape = file_name(s, name, tname);
-    int f = zxv_file_open(name, ZXV_O_READ);
+    char name[NAME_MAX + 8], tname[10];
+    int f;
+    if (file_name(s, name, tname)) {
+        /* Without extension: .scr or .bin, and then a tape */
+        uint32_t n = 0;
+        while (name[n])
+            n++;
+        add_ext(name, block_ext(start, len));
+        f = zxv_file_open(name, ZXV_O_READ);
+        if (f == ZXV_E_NOENT) {
+            name[n] = 0;
+            add_ext(name, "tap");
+            f = zxv_file_open(name, ZXV_O_READ);
+        }
+    } else {
+        f = zxv_file_open(name, ZXV_O_READ);
+    }
     check(f, -1);
+    int tape = is_tap(name);
     uint32_t avail = 0xFFFFFFFFu;
     if (tape) {
         /* The first CODE header, and the data block after it */

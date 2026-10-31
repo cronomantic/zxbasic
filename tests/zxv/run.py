@@ -10,8 +10,9 @@ Needs the RISC-V toolchain in the PATH and:
 The runtime is built with -DZXB_TEST, so PRINT also goes to the zxv-cli console.
 A test may have NAME.opt with more options for the compiler (--enable-break...),
 NAME.cfg with the zxv-cli options (--frames, --type...), NAME.pix with
-pixels its screen must have: X,Y=RRGGBB in the 640x480 image, and a folder
-NAME.sd with files to put on the SD card.
+pixels its screen must have: X,Y=RRGGBB in the 640x480 image, a folder
+NAME.sd with files to put on the SD card, and NAME.files with the files the
+card must have at the end (one name per line).
 """
 
 import os
@@ -85,6 +86,11 @@ def run_test(name: str, update: bool) -> bool:
         pix = os.path.join(HERE, name + ".pix")
         if os.path.exists(pix):
             output += check_pixels(shot, pix)
+        card = os.path.join(HERE, name + ".files")
+        if os.path.exists(card):
+            for f in open(card, encoding="utf-8").read().split():
+                if not os.path.isfile(os.path.join(sd, f)):
+                    output += f"not on the card: {f}\n"
 
     expected_file = os.path.join(HERE, name + ".out")
     if update or not os.path.exists(expected_file):

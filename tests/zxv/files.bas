@@ -1,4 +1,5 @@
-REM SAVE, LOAD and VERIFY on the SD card: DATA, SCREEN$, CODE, raw bytes
+REM SAVE, LOAD and VERIFY on the SD card: DATA and CODE in .bin, SCREEN$ in .scr,
+REM a .tap that goes back where it was saved
 DIM a(9) AS UBYTE
 DIM big AS ULONG
 DIM i AS UBYTE
@@ -6,7 +7,7 @@ DIM i AS UBYTE
 FOR i = 0 TO 9: a(i) = i * 3: NEXT i
 SAVE "numbers" CODE @a(0), 10
 FOR i = 0 TO 9: a(i) = 0: NEXT i
-LOAD "numbers" CODE
+LOAD "numbers" CODE @a(0)
 PRINT a(0); " "; a(5); " "; a(9)
 
 big = 4000000000
@@ -15,7 +16,7 @@ big = 0
 LOAD "big" DATA big
 PRINT big
 
-REM The screen, as a tape
+REM The screen, as a .scr
 CLS
 PRINT AT 5, 3; PAPER 2; INK 7; "saved screen"
 SAVE "screen" SCREEN$
@@ -31,9 +32,9 @@ LOAD "low.bin" CODE 23296
 PRINT AT 10, 0; PEEK 23296; " "; PEEK 23305
 
 REM A tape without the address: back where it was saved
-SAVE "low" CODE 23296, 10
+SAVE "tape.tap" CODE 23296, 10
 POKE 23300, 0
-LOAD "low" CODE
+LOAD "tape" CODE
 PRINT PEEK 23300
 
 REM All the variables
