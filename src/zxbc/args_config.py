@@ -28,7 +28,7 @@ __all__ = "parse_options", "set_option_defines"
 
 def parse_options(args: list[str] | None = None) -> Namespace:
     """Parses command line options and setup global Options container"""
-    parser = args_parser.parser()
+    parser = args_parser.parser(args_parser.get_target_arch(args))  # With the options of that arch
     options = parser.parse_args(args=args)
 
     if os.path.isfile(options.config_file):
@@ -63,6 +63,7 @@ def parse_options(args: list[str] | None = None) -> Namespace:
         parser.error(f"Invalid architecture '{options.arch}'")
 
     OPTIONS.architecture = options.arch
+    arch.set_arch_options(options.arch, options)
 
     # region [Enable/Disable Warnings]
     enabled_warnings = set(options.enable_warning or [])

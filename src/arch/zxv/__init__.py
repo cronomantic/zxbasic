@@ -13,21 +13,42 @@ attributes and system variables), as the ZX-V BASIC does.
 """
 
 import src.api.global_
+from src.api.config import OPTIONS
 from src.api.constants import TYPE
+from src.api.options import Action
 from src.arch.z80 import beep
 from src.arch.zxv import backend
-from src.arch.zxv.driver import finish
+from src.arch.zxv.driver import LOADING_SCREEN, finish
 from src.arch.zxv.translator import FunctionTranslator, Translator, VarTranslator
 
 __all__ = (
     "FunctionTranslator",
     "Translator",
     "VarTranslator",
+    "add_arguments",
     "backend",
     "beep",
     "finish",
+    "set_options",
     "setup",
 )
+
+
+def add_arguments(parser) -> None:
+    """The command line options of this arch (zxbc --arch=zxv)"""
+    group = parser.add_argument_group("zxv target")
+    group.add_argument(
+        "--loading-screen",
+        type=str,
+        metavar="FILE",
+        help="Loading screen of the .zxv: a PNG (256x192, 512x384, or the frame with the border, 320x240 or "
+        "640x480) or a .gfx with a screen",
+    )
+    OPTIONS(Action.ADD_IF_NOT_DEFINED, name=LOADING_SCREEN, type=str, ignore_none=True)
+
+
+def set_options(options) -> None:
+    OPTIONS[LOADING_SCREEN] = options.loading_screen
 
 
 def setup() -> None:

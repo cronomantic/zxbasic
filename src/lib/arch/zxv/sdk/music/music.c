@@ -108,9 +108,16 @@ static void step(uint32_t t)
 
 void zxv_music_update(void)
 {
-    if (S.busy)
-        return;
+    zxv_music_update_until(zxv_time_us() + ZXV_MUSIC_AHEAD_US);
+}
+
+void zxv_music_update_until(uint32_t t_us)
+{
+    if (S.busy || (S.running && (int32_t)(S.next - t_us) >= 0))
+        return;                         /* ya va hasta ahí (sin leer el reloj) */
     uint32_t now = zxv_time_us();
+    if ((int32_t)(t_us - (now + ZXV_MUSIC_AHEAD_US)) > 0)
+        t_us = now + ZXV_MUSIC_AHEAD_US;
     if (!S.running) {
         if (!active())
             return;
@@ -121,7 +128,7 @@ void zxv_music_update(void)
      * recupera de golpe, se sigue desde ahora. */
     if ((int32_t)(now - S.next) > (int32_t)(2 * ZXV_MUSIC_AHEAD_US))
         S.next = now;
-    while ((int32_t)(S.next - (now + ZXV_MUSIC_AHEAD_US)) < 0) {
+    while ((int32_t)(S.next - t_us) < 0) {
         int was = active();
         step(S.next);
         S.next += STEP_US;

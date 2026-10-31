@@ -2,13 +2,18 @@
 /*
  * zxb_files.c - SAVE, LOAD and VERIFY on the SD card. ZX Basic turns CODE,
  * SCREEN$ and DATA into a block of memory (an address and a length); they
- * are written as the ZX-V BASIC does (its decision D88): the bytes as they
- * are, and a name without extension gets .scr for the screen (the block
- * 16384, 6912) and .bin for the rest. LOAD without extension tries that one
- * and then .tap. A .tap is a Spectrum tape (a CODE header and the data), for
- * Spectrum emulators and to load it back where it was saved; its header has
- * 16 bits for the address: above 64K, its second parameter (32768 for CODE
- * in the Spectrum) is the high half.
+ * are written as the ZX-V BASIC does (its decisions D88 and D89): a name
+ * without extension gets .gfx for the screen (the block 16384, 6912) and
+ * .bin for the rest. LOAD without extension tries that one and then .tap.
+ *
+ * - The screen in a .gfx is the ZX-V screen shown, a screen object: its
+ *   mode, the border colour and the pixels of the page as in the VRAM.
+ * - Any other name gets the bytes as they are: a .scr is the Spectrum
+ *   screen (the 6912 bytes of the shadow of 16384).
+ * - A .tap is a Spectrum tape (a CODE header and the data), for Spectrum
+ *   emulators and to load it back where it was saved; its header has 16
+ *   bits for the address: above 64K, its second parameter (32768 for CODE
+ *   in the Spectrum) is the high half.
  */
 #include "zxb.h"
 
@@ -16,8 +21,12 @@
 #define ERR_RANGE   10                  /* B Integer out of range */
 #define NAME_MAX    64
 
+#define GFX_SCREEN  5                   /* A screen object in a .gfx */
+#define REG8(a)     (*(volatile uint8_t *)(uintptr_t)(a))
+
 void zxb_ERROR(int code);
 void zxb_fail(const char *msg);
+void zxb_zxv_mode(int mode, int w, int h);
 
 /* The C name of the file, from the BASIC string (freed), and the name of a
  * tape header: without the folder or the extension, as in the ZX-V BASIC.
@@ -53,20 +62,21 @@ static void add_ext(char *name, const char *ext)
     name[n] = '.', name[n + 1] = ext[0], name[n + 2] = ext[1], name[n + 3] = ext[2], name[n + 4] = 0;
 }
 
-static int is_tap(const char *name)
+/* Does the name end in .ext (three lowercase letters)? */
+static int ext_is(const char *name, const char *ext)
 {
     uint32_t n = 0;
     while (name[n])
         n++;
-    return n > 4 && name[n - 4] == '.' && (name[n - 3] | 0x20) == 't' && (name[n - 2] | 0x20) == 'a' &&
-           (name[n - 1] | 0x20) == 'p';
+    return n > 4 && name[n - 4] == '.' && (name[n - 3] | 0x20) == ext[0] && (name[n - 2] | 0x20) == ext[1] &&
+           (name[n - 1] | 0x20) == ext[2];
 }
 
-/* The extension of a block without one: the screen, .scr; the rest, .bin */
-static const char *block_ext(uint32_t start, uint32_t len)
-{
-    return start == 16384 && len == 6912 ? "scr" : "bin";
-}
+/* SCREEN$ (or CODE 16384, 6912) */
+static int is_screen(uint32_t start, uint32_t len) { return start == 16384 && len == 6912; }
+
+/* The extension of a block without one: the screen, .gfx; the rest, .bin */
+static const char *block_ext(uint32_t start, uint32_t len) { return is_screen(start, len) ? "gfx" : "bin"; }
 
 static void file_error(int e)
 {
@@ -119,13 +129,107 @@ static void write_block(int f, uint8_t flag, const uint8_t *hdr, uint32_t start,
     check(zxv_file_write(f, &sum, 1), f);
 }
 
+static int read_n(int f, uint8_t *buf, uint32_t n)
+{
+    int r = zxv_file_read(f, buf, n);
+    check(r, f);
+    return r == (int)n;
+}
+
+/* --- The ZX-V screen in a .gfx (ZX-V decision D89) ---------------------------
+ *
+ * The page shown, as a screen object: the mode, the border colour, 0 and the
+ * pixels as in the VRAM (192 lines of 128 bytes in mode 0, 384 of 256 in
+ * mode 1). With a bigger page (MODE 0 of zxv.bas with a virtual field), its
+ * top left window. */
+
+static uint8_t *shown_page(void)
+{
+    return (uint8_t *)(uintptr_t)(REG8(ZXV_V_PAGE) & 1 ? ZXV_VRAM1_BASE : ZXV_VRAM0_BASE);
+}
+
+/* A .gfx with one object, the screen */
+static void save_screen(int f)
+{
+    int mode = REG8(ZXV_V_MODE) & 1;
+    uint32_t size = ZXV_SCREEN_SIZE(mode);
+    uint8_t h[16 + ZXV_SCREEN_HEAD] = { 'Z', 'X', 'V', 'G', 1, 0, 1, 0, GFX_SCREEN, 0, 0, 0 };
+    h[12] = (uint8_t)size, h[13] = (uint8_t)(size >> 8), h[14] = (uint8_t)(size >> 16);
+    h[16] = (uint8_t)mode;
+    h[17] = REG8(ZXV_V_BORDER) & 15;
+    check(zxv_file_write(f, h, sizeof(h)), f);
+    uint32_t n = mode ? 256 : 128, lines = mode ? 384 : 192, stride = (uint32_t)zxb_wpl * 4;
+    const uint8_t *v = shown_page();
+    for (uint32_t y = 0; y < lines; y++)
+        check(zxv_file_write(f, v + y * stride, n), f);
+}
+
+/* The first screen of a .gfx: LOAD puts it on the page shown, with its mode
+ * (if it is not the current one, as MODE of zxv.bas) and its border; VERIFY
+ * compares it. Returns 0 if the file is not right. The Spectrum screen (the
+ * shadow that PEEK, SCREEN$, ATTR and POINT read) does not change. */
+static int load_screen(int f, int is_load)
+{
+    uint8_t h[8], line[256];
+    if (!read_n(f, h, 8) || h[0] != 'Z' || h[1] != 'X' || h[2] != 'V' || h[3] != 'G' || h[4] != 1)
+        return 0;
+    for (uint32_t i = h[6] | (uint32_t)h[7] << 8; i > 0; i--) {
+        if (!read_n(f, h, 8))
+            return 0;
+        uint32_t len = h[4] | (uint32_t)h[5] << 8 | (uint32_t)h[6] << 16 | (uint32_t)h[7] << 24;
+        if (h[0] != GFX_SCREEN || h[1]) {
+            if (zxv_file_seek(f, (int32_t)len, ZXV_SEEK_CUR) < 0)
+                return 0;
+            continue;
+        }
+        if (!read_n(f, h, ZXV_SCREEN_HEAD))
+            return 0;
+        int mode = h[0];
+        if (mode > 1 || h[1] > 15 || h[2] || h[3] || len != ZXV_SCREEN_SIZE(mode))
+            return 0;
+        int cur = REG8(ZXV_V_MODE) & 1;
+        if (!is_load && mode != cur)
+            return 0;
+        if (is_load && (mode != cur || REG8(ZXV_V_VSIZE)))
+            zxb_zxv_mode(mode, 0, 0);
+        uint32_t n = mode ? 256 : 128, lines = mode ? 384 : 192, stride = (uint32_t)zxb_wpl * 4;
+        uint8_t *v = shown_page();
+        for (uint32_t y = 0; y < lines; y++) {
+            uint8_t *d = is_load ? v + y * stride : line;
+            if (!read_n(f, d, n))
+                return 0;
+            if (!is_load)
+                for (uint32_t x = 0; x < n; x++)
+                    if (d[x] != v[y * stride + x])
+                        return 0;
+        }
+        if (is_load) {
+            if (h[1] < 8)
+                zxb_BORDER(h[1]);
+            else
+                REG8(ZXV_V_BORDER) = h[1];
+        }
+        return 1;
+    }
+    return 0;
+}
+
+/* --- SAVE, LOAD and VERIFY ------------------------------------------------------- */
+
 /* SAVE name CODE start, len (and SCREEN$ and DATA) */
 void zxb_SAVE_CODE(uint32_t len, uint32_t start, zstr s)
 {
     char name[NAME_MAX + 8], tname[10];
     if (file_name(s, name, tname))
         add_ext(name, block_ext(start, len));
-    int tape = is_tap(name);
+    if (is_screen(start, len) && ext_is(name, "gfx")) {
+        int f = zxv_file_open(name, ZXV_O_WRITE | ZXV_O_CREATE | ZXV_O_TRUNC);
+        check(f, -1);
+        save_screen(f);
+        zxv_file_close(f);
+        return;
+    }
+    int tape = ext_is(name, "tap");
     if (len == 0)
         zxb_ERROR(9);                   /* A Invalid argument */
     if (tape && len > 65535)            /* a tape block, at most */
@@ -157,13 +261,6 @@ void zxb_SAVE_CODE(uint32_t len, uint32_t start, zstr s)
     zxv_file_close(f);
 }
 
-static int read_n(int f, uint8_t *buf, uint32_t n)
-{
-    int r = zxv_file_read(f, buf, n);
-    check(r, f);
-    return r == (int)n;
-}
-
 /* LOAD (is_load) or VERIFY name CODE [start [, len]] (and SCREEN$ and DATA).
  * Without start (0), the address of the tape header; without len (0), all. */
 void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
@@ -171,7 +268,7 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
     char name[NAME_MAX + 8], tname[10];
     int f;
     if (file_name(s, name, tname)) {
-        /* Without extension: .scr or .bin, and then a tape */
+        /* Without extension: .gfx or .bin, and then a tape */
         uint32_t n = 0;
         while (name[n])
             n++;
@@ -186,7 +283,14 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
         f = zxv_file_open(name, ZXV_O_READ);
     }
     check(f, -1);
-    int tape = is_tap(name);
+    if (is_screen(start, len) && ext_is(name, "gfx")) {
+        int ok = load_screen(f, (int)is_load);
+        zxv_file_close(f);
+        if (!ok)
+            zxb_ERROR(ERR_TAPE);
+        return;
+    }
+    int tape = ext_is(name, "tap");
     uint32_t avail = 0xFFFFFFFFu;
     if (tape) {
         /* The first CODE header, and the data block after it */

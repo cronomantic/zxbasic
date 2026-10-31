@@ -78,6 +78,12 @@ void zxv_music_moved(const void *song, const void *bank);
 /* Lleva la música y los efectos hasta ZXV_MUSIC_AHEAD_US por delante. */
 void zxv_music_update(void);
 
+/* Lo mismo, pero solo los pasos de antes de t_us (en el reloj de
+ * zxv_time_us; nunca más allá de ZXV_MUSIC_AHEAD_US por delante). Para
+ * mezclar la música con otros zxv_ay_event, que van en orden de hora: antes
+ * de cada uno, zxv_music_update_until(su hora). */
+void zxv_music_update_until(uint32_t t_us);
+
 /* --- Efectos AYFX --------------------------------------------------------- */
 
 /* Los canales: 0-2 los A, B y C del primer AY y 3-5 los del segundo. */

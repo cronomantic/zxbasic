@@ -11,6 +11,8 @@
 Needs the RISC-V GCC toolchain:
   ZXV_CROSS   the toolchain prefix (riscv64-unknown-elf- by default)
   ZXV_CFLAGS  more options for the runtime (-DZXB_TEST: PRINT also goes to the zxv-cli --test console)
+
+--loading-screen FILE (OPTIONS.loading_screen) puts a loading screen in the .zxv, a PNG or a .gfx (screen.py).
 """
 
 import os
@@ -24,6 +26,7 @@ from src.api import errmsg
 from src.api import global_ as gl
 from src.api.config import OPTIONS
 from src.api.utils import open_file
+from src.arch.zxv.screen import loading_screen
 from src.arch.zxv.zxvfile import ZxvError, zxv_from_elf
 from src.zxbc.args_parser import FileType
 
@@ -31,6 +34,7 @@ MARCH = "rv32imac_zicsr_zifencei_zba_zbb_zbs_zbkb_zcb"
 LIB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "arch", "zxv")
 RUNTIME_DIR = os.path.join(LIB_DIR, "runtime")
 SDK_DIR = os.path.join(LIB_DIR, "sdk")
+LOADING_SCREEN = "loading_screen"  # The option (zxbc --loading-screen FILE)
 
 PROLOGUE = """\
 \t.option norelax
@@ -148,6 +152,19 @@ def build(asm_text: str, output: str) -> int:
     music = os.path.join(sdk, "music")
     sources += sorted(os.path.join(music, x) for x in os.listdir(music) if x.endswith(".c"))
 
+    # The loading screen: the ROM shows it while it loads the program and, in mode 0 (the one of the program),
+    # the program starts with it (the runtime does not clear the screen: ZXB_LOADING_SCREEN)
+    screen, defines = b"", []
+    screen_file = OPTIONS[LOADING_SCREEN].value if LOADING_SCREEN in OPTIONS else None
+    if screen_file:
+        try:
+            screen = loading_screen(screen_file)
+        except ZxvError as e:
+            errmsg.error(0, f"zxv: {e}")
+            return 1
+        if screen[0] == 0:
+            defines.append("-DZXB_LOADING_SCREEN")
+
     with tempfile.TemporaryDirectory(prefix="zxb-zxv-") as tmp:
         prog = os.path.join(tmp, "prog.s")
         with open(prog, "wt", encoding="utf-8") as f:
@@ -169,6 +186,7 @@ def build(asm_text: str, output: str) -> int:
             "-I" + os.path.join(sdk, "include"),
             "-I" + runtime,
             "-I" + music,
+            *defines,
             *shlex.split(os.environ.get("ZXV_CFLAGS", "")),
             "-nostdlib",
             "-nostartfiles",
@@ -191,7 +209,7 @@ def build(asm_text: str, output: str) -> int:
         name = os.path.splitext(os.path.basename(output))[0][:27]
         try:
             with open(elf, "rb") as f:
-                zxv = zxv_from_elf(f.read(), name)
+                zxv = zxv_from_elf(f.read(), name, screen)
         except ZxvError as e:
             errmsg.error(0, f"zxv: {e}")
             return 1

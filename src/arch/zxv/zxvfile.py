@@ -5,15 +5,15 @@
 # See https://www.gnu.org/licenses/agpl-3.0.html for details.
 # --------------------------------------------------------------------
 
-"""A RISC-V ELF linked with sdk/zxv.ld as a .zxv program (ZX-V spec §9.2): a 64-byte header and the
-contiguous image. From sdk/tools/elf2zxv.py of ZX-V (MIT)."""
+"""A RISC-V ELF linked with sdk/zxv.ld as a .zxv program (ZX-V spec §9.2): a 72-byte header, the loading
+screen (if any) and the contiguous image. From sdk/tools/elf2zxv.py of ZX-V (MIT)."""
 
 import struct
 import zlib
 
 URAM_BASE, URAM_END = 0x20034000, 0x20072000
 MAGIC = b"ZXV1"
-HDR_SIZE = 64
+HDR_SIZE = 72
 PROFILE = 1
 
 
@@ -38,8 +38,9 @@ def load_segments(data: bytes):
     return entry, segs
 
 
-def zxv_from_elf(elf: bytes, name: str) -> bytes:
-    """The .zxv file of an ELF; name is the program's name (up to 27 characters)"""
+def zxv_from_elf(elf: bytes, name: str, screen: bytes = b"") -> bytes:
+    """The .zxv file of an ELF; name is the program's name (up to 27 characters) and screen the loading
+    screen, the data of a .gfx screen object (src/arch/zxv/screen.py), or nothing"""
     entry, segs = load_segments(elf)
     if not segs:
         raise ZxvError("the ELF has no loadable segments")
@@ -63,7 +64,7 @@ def zxv_from_elf(elf: bytes, name: str) -> bytes:
 
     stack, mode, flags = 0, 0, 0  # The current stack, mode 0
     hdr = struct.pack(
-        "<4sHHIIIIIBBHI28s",
+        "<4sHHIIIIIBBHI28sII",
         MAGIC,
         HDR_SIZE,
         PROFILE,
@@ -77,6 +78,8 @@ def zxv_from_elf(elf: bytes, name: str) -> bytes:
         0,
         zlib.crc32(image) & 0xFFFFFFFF,
         name.encode("ascii", "replace")[:27],
+        len(screen),
+        0,
     )
     assert len(hdr) == HDR_SIZE
-    return hdr + bytes(image)
+    return hdr + screen + bytes(image)

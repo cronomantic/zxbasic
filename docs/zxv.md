@@ -7,6 +7,7 @@ is a `.zxv` native program that its BASIC loads with `LOAD "name"`.
 ```sh
 python3 zxbc.py --arch=zxv program.bas    # program.zxv
 python3 zxbc.py --arch=zxv -f asm program.bas   # only the assembler (GNU as)
+python3 zxbc.py --arch=zxv --loading-screen title.png program.bas   # with a loading screen
 ```
 
 It only needs the RISC-V GCC toolchain (`riscv64-unknown-elf-gcc`; `ZXV_CROSS`
@@ -89,16 +90,42 @@ Not yet:
   comes in `a0`, for `ASM` blocks).
 - Optimization of the generated code (the `-O` levels only change the front end).
 
+## Loading screen
+
+`--loading-screen FILE` (only with `--arch=zxv`) puts a loading screen in the
+`.zxv`, as ZX-V's `elf2zxv.py --screen` does: a PNG of 256×192 (mode 0) or
+512×384 (mode 1), or the whole frame with its border, 320×240 or 640×480 (the
+border takes the colour of the top left corner); or the first screen of a `.gfx`
+(`png2gfx.py --screen`, zxv-gfx, or `SAVE "x" SCREEN$`). Each pixel takes the
+nearest ZX-V colour.
+
+The ROM shows it while it loads the program. A mode 0 screen, the mode of the
+programs, stays when the program starts, with its border: the runtime does not
+clear it, and `PRINT`, `PLOT` and the rest draw over it (the Spectrum screen,
+the one `PEEK`, `SCREEN$`, `ATTR` and `POINT` read, starts empty). Then `CLS`
+clears it. A mode 1 screen is only seen while loading.
+
 ## Files
 
 `SAVE`, `LOAD` and `VERIFY` work on the SD card of ZX-V (or the emulator's card
-folder), as in its BASIC: the bytes as they are, and a name without extension
-gets `.scr` for the screen and `.bin` for the rest (`CODE` and `DATA`). `LOAD`
-without extension tries that one and then `.tap`. A name ending in `.tap` is a
-Spectrum tape, with a `CODE` header and the data, for Spectrum emulators.
+folder), as in its BASIC: a name without extension gets `.gfx` for the screen
+and `.bin` for the rest (`CODE` and `DATA`). `LOAD` without extension tries that
+one and then `.tap`.
+
+- `SCREEN$` in a `.gfx` is the ZX-V screen shown, as its BASIC saves it: a
+  graphics file with a screen object (the mode, the border colour and the pixels
+  of the page shown, 4 bits each). `LOAD` puts it back, with its mode (if it is
+  not the current one, as `MODE` of `zxv.bas` does, which clears both pages) and
+  its border; `VERIFY` compares it with the screen. The Spectrum screen, the one
+  `PEEK`, `SCREEN$`, `ATTR` and `POINT` read, does not change.
+- Any other name gets the bytes as they are. `SCREEN$` in a `.scr` is the
+  Spectrum screen, its 6912 bytes.
+- A name ending in `.tap` is a Spectrum tape, with a `CODE` header and the data,
+  for Spectrum emulators.
 
 ```basic
-SAVE "screen" SCREEN$              ' screen.scr, the 6912 bytes
+SAVE "screen" SCREEN$              ' screen.gfx, the ZX-V screen
+SAVE "screen.scr" SCREEN$          ' the Spectrum screen, 6912 bytes
 SAVE "level" CODE @map(0), 512     ' level.bin, 512 raw bytes
 LOAD "level" CODE @map(0)          ' raw bytes need the address
 LOAD "screen" SCREEN$
@@ -106,6 +133,9 @@ VERIFY "screen" SCREEN$
 SAVE "level.tap" CODE @map(0), 512 ' a Spectrum tape
 LOAD "level.tap" CODE              ' back where it was saved
 ```
+
+ZX Basic turns `SCREEN$` into `CODE 16384, 6912`, so that block goes in a `.gfx`
+too when the name has no extension or ends in `.gfx`.
 
 A `.bin` does not know where it goes, so `LOAD ... CODE` needs the address; a
 `.tap` keeps it, and loads the block where it was saved. A tape header has 16
@@ -190,6 +220,7 @@ python3 tests/zxv/run.py            # all; NAME... for some; --update writes NAM
 ```
 
 Each test is a program (`NAME.bas`) and what it prints (`NAME.out`), and maybe the
-colour of some pixels of its screen (`NAME.pix`) and the files of its SD card (a
-folder, `NAME.sd`). The runtime is built with
+colour of some pixels of its screen (`NAME.pix`), the files of its SD card (a
+folder, `NAME.sd`, and `NAME.files`, the ones it must have at the end) and more
+options for the compiler (`NAME.opt`, run in `tests/zxv`). The runtime is built with
 `-DZXB_TEST`, so what the program prints also goes to the `zxv-cli --test` console.

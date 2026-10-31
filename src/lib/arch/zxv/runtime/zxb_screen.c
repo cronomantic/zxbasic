@@ -122,9 +122,17 @@ void zxb_screen_init(void)
     LOW(23676) = UDG_DEF >> 8;
     for (int i = 0; i < 21 * 8; i++)            /* The UDG are A to U, as in the Spectrum */
         LOW(UDG_DEF + i) = zxb_font[('A' - 32) * 8 + i];
+#ifdef ZXB_LOADING_SCREEN
+    /* The .zxv has a loading screen in mode 0 (zxbc --loading-screen): the
+     * ROM left it on page 0, with its border, and it stays until the program
+     * draws. The Spectrum screen starts cleared, but it is not painted. */
+    border = *(volatile uint8_t *)(uintptr_t)ZXV_V_BORDER & 7;
+    __builtin_memset(attrs, attr_p, sizeof(attrs));
+#else
     zxv_set_mode(0);
     zxv_set_page(0);
     *(volatile uint8_t *)(uintptr_t)ZXV_V_BORDER = border;
+#endif
     zxv_set_frame_hook(flash_hook);
 }
 

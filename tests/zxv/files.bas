@@ -1,4 +1,4 @@
-REM SAVE, LOAD and VERIFY on the SD card: DATA and CODE in .bin, SCREEN$ in .scr,
+REM SAVE, LOAD and VERIFY on the SD card: DATA and CODE in .bin, SCREEN$ in .gfx,
 REM a .tap that goes back where it was saved
 DIM a(9) AS UBYTE
 DIM big AS ULONG
@@ -16,12 +16,18 @@ big = 0
 LOAD "big" DATA big
 PRINT big
 
-REM The screen, as a .scr
+REM The ZX-V screen, in a .gfx; the Spectrum one (its 6912 bytes), in a .scr
 CLS
+BORDER 2
 PRINT AT 5, 3; PAPER 2; INK 7; "saved screen"
 SAVE "screen" SCREEN$
+SAVE "spectrum.scr" SCREEN$
+BORDER 7: CLS
+LOAD "spectrum.scr" SCREEN$
+VERIFY "spectrum.scr" SCREEN$
 CLS
 LOAD "screen" SCREEN$
+VERIFY "screen" SCREEN$
 
 REM Raw bytes (with an extension) and VERIFY
 FOR i = 0 TO 9: POKE 23296 + i, 200 + i: NEXT i

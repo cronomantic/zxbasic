@@ -11,7 +11,9 @@ void zxb_init(void)
 {
     zxb_mem_init();
     zxb_screen_init();
+#ifndef ZXB_LOADING_SCREEN              /* Otherwise the loading screen stays */
     zxb_CLS();
+#endif
     seed = *(volatile uint32_t *)(uintptr_t)ZXV_SV_FRAMES & 0xFFFF;
 }
 

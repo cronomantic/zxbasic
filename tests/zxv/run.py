@@ -8,7 +8,8 @@ Needs the RISC-V toolchain in the PATH and:
   ZXV_ROM   the ROM (optional: the one of the emulator otherwise)
 
 The runtime is built with -DZXB_TEST, so PRINT also goes to the zxv-cli console.
-A test may have NAME.opt with more options for the compiler (--enable-break...),
+A test may have NAME.opt with more options for the compiler (--enable-break...,
+run in this folder, so its files are here),
 NAME.cfg with the zxv-cli options (--frames, --type...), NAME.pix with
 pixels its screen must have: X,Y=RRGGBB in the 640x480 image, a folder
 NAME.sd with files to put on the SD card, and NAME.files with the files the
@@ -62,6 +63,7 @@ def run_test(name: str, update: bool) -> bool:
         result = subprocess.run(
             [sys.executable, ZXBC, "--arch", "zxv", *zxbc_opts, "-o", prog, bas],
             env=env,
+            cwd=HERE,
             capture_output=True,
             text=True,
         )

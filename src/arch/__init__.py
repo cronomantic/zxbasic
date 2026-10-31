@@ -36,4 +36,19 @@ def set_target_arch(target_arch: str):
     __DEBUG__(f"Target architecture set to {target_arch}")
 
 
+def add_arch_arguments(target_arch: str, parser) -> None:
+    """Command line options of an arch: the add_arguments(parser) function of its package, if it has one"""
+    module = importlib.import_module(f".{target_arch}", "src.arch")
+    if hasattr(module, "add_arguments"):
+        module.add_arguments(parser)
+
+
+def set_arch_options(target_arch: str, options) -> None:
+    """Lets an arch take its command line options (the parsed ones): the set_options(options) function of its
+    package, if it has one"""
+    module = importlib.import_module(f".{target_arch}", "src.arch")
+    if hasattr(module, "set_options"):
+        module.set_options(options)
+
+
 set_target_arch(AVAILABLE_ARCHITECTURES[0])

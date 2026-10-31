@@ -38,7 +38,15 @@ def parse_warning_option(code: str) -> str:
 # ------------------------------------------------------------
 # Command line parser
 # ------------------------------------------------------------
-def parser() -> argparse.ArgumentParser:
+def get_target_arch(args: list[str] | None = None) -> str:
+    """The --arch of a command line, before parsing it (so that the arch can add its own options)"""
+    parser_ = argparse.ArgumentParser(prefix_chars="-+", add_help=False)
+    parser_.add_argument("--arch", type=str, default=arch.AVAILABLE_ARCHITECTURES[0])
+    return parser_.parse_known_args(args)[0].arch
+
+
+def parser(target_arch: str | None = None) -> argparse.ArgumentParser:
+    """The command line parser; with target_arch, also with the options of that arch"""
     parser_ = argparse.ArgumentParser(prefix_chars="-+")
     parser_.add_argument("PROGRAM", type=str, help="BASIC program file")
     parser_.add_argument(
@@ -218,5 +226,8 @@ def parser() -> argparse.ArgumentParser:
         default=OptimizationStrategy.Auto,
         help=f"Optimization strategy (optimize for speed or size). Default: {OptimizationStrategy.Auto}",
     )
+
+    if target_arch in arch.AVAILABLE_ARCHITECTURES:
+        arch.add_arch_arguments(target_arch, parser_)
 
     return parser_
