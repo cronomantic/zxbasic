@@ -96,14 +96,22 @@ Not yet:
 `.zxv`, as ZX-V's `elf2zxv.py --screen` does: a PNG of 256×192 (mode 0) or
 512×384 (mode 1), or the whole frame with its border, 320×240 or 640×480 (the
 border takes the colour of the top left corner); or the first screen of a `.gfx`
-(`png2gfx.py --screen`, zxv-gfx, or `SAVE "x" SCREEN$`). Each pixel takes the
-nearest ZX-V colour.
+(`png2gfx.py --screen`, zxv-gfx, or `SAVE "x" SCREEN$`), with its palette if it
+has one. A PNG keeps its colours, as `png2gfx.py --screen` does (ZX-V decision
+D90): if they are all standard ZX-V colours, the screen has no palette; if not,
+it can have up to 16, and carries a palette with them (the standard ones at
+their own index, the others in the free ones; more than 16 is an error).
 
 The ROM shows it while it loads the program. A mode 0 screen, the mode of the
 programs, stays when the program starts, with its border: the runtime does not
 clear it, and `PRINT`, `PLOT` and the rest draw over it (the Spectrum screen,
 the one `PEEK`, `SCREEN$`, `ATTR` and `POINT` read, starts empty). Then `CLS`
 clears it. A mode 1 screen is only seen while loading.
+
+A screen with a palette is shown with it: the ROM puts it in table 0, so the
+program starts with those colours (`PRINT` too), until `MODE` or `PALETTERESET`
+(`zxv.bas`) brings the standard ones back. With a mode 1 screen, cleared when the
+program starts, its colours go with it.
 
 ## Files
 
@@ -113,11 +121,14 @@ and `.bin` for the rest (`CODE` and `DATA`). `LOAD` without extension tries that
 one and then `.tap`.
 
 - `SCREEN$` in a `.gfx` is the ZX-V screen shown, as its BASIC saves it: a
-  graphics file with a screen object (the mode, the border colour and the pixels
-  of the page shown, 4 bits each). `LOAD` puts it back, with its mode (if it is
-  not the current one, as `MODE` of `zxv.bas` does, which clears both pages) and
-  its border; `VERIFY` compares it with the screen. The Spectrum screen, the one
-  `PEEK`, `SCREEN$`, `ATTR` and `POINT` read, does not change.
+  graphics file with a screen object (the mode, the border colour, the colours
+  if they are not the standard ones, and the pixels of the page shown, 4 bits
+  each). The colours are the 16 as they are seen, with `REMAP` and `PALETTE`.
+  `LOAD` puts it back, with its mode (if it is not the current one, as `MODE` of
+  `zxv.bas` does, which clears both pages), its border and its colours (in
+  table 0, with the `REMAP` changes gone); `VERIFY` compares it with the
+  screen, its colours too. The Spectrum screen, the one `PEEK`, `SCREEN$`,
+  `ATTR` and `POINT` read, does not change.
 - Any other name gets the bytes as they are. `SCREEN$` in a `.scr` is the
   Spectrum screen, its 6912 bytes.
 - A name ending in `.tap` is a Spectrum tape, with a `CODE` header and the data,
@@ -172,6 +183,7 @@ with the same names and arguments (see its manual):
 | | |
 |---|---|
 | `MODE n[, w, h]`, `PAGE n`, `SCREEN n`, `SCROLL [x, y]`, `REMAP c, n`, `REMAPRESET`, `WAIT [n]` | Modes 0 and 1 (and the big pages of mode 0), the page shown and the one drawn on (double buffer), hardware scroll, colour changes, and a steady pace of frames |
+| `PALETTE c, r, g, b`, `PALETTERESET` | The palette: colour `c` (0-15) with any red, green and blue (0-255 each; 215 is the level of the standard colours and 255 the bright one), and the standard colours again |
 | `GRAB n, x, y, w, h[, t]`, `GRABSTR n, w, a$`, `SPRITE n, x, y[, f[, c$[, w, h]]]`, `HIT(a, ax, ay, b, bx, by)` | Sprites from the screen or from a string of hex digits, drawn mirrored, with other colours or scaled, and pixel-exact collisions |
 | `BOX c, x, y, w, h`, `DISC c, x, y, r`, `POLY c, x1, y1, ...`, `CLIP [x, y, w, h]`, `PIXEL(x, y)` | Filled shapes, clipping, and the colour of any pixel |
 | `KEY(n)`, `JOY(n)`, `SOUND r, v`, `TIME` | Keys held down, joysticks, the registers of the two AY chips, and the frame counter |
@@ -185,7 +197,9 @@ pixels of the drawing page, in any mode.
 
 Where it is not as in the ZX-V BASIC: the sprite of a string is `GRABSTR` (`GRAB n,
 w, a$` there), `KEY`, `JOY`, `HIT` and `PIXEL` need parentheses, `REMAP` and `SOUND`
-take one pair at a time, `POLY` up to 8 points, `SCREEN` can not be used with
+take one pair at a time and `PALETTE` one colour, `REMAP` and `PALETTE` only
+change table 0 (no `#t`), `REMAPRESET` and `PALETTERESET` are `REMAP` and
+`PALETTE` alone, `POLY` up to 8 points, `SCREEN` can not be used with
 `screen.bas`, and the music and effects are `MUSICLOAD f$` and `SFXLOAD f$`
 (`LOAD f$ MUSIC` and `SFX` there), `MUSICPLAY`, `MUSICSTOP`... and `SFXPLAYING`
 (the function `SFX` there).

@@ -75,6 +75,64 @@ def test_png_frame():
     assert data[4] == 2 | 15 << 4  # Red (even pixel), bright white
 
 
+def test_rgb565():
+    """The colours in RGB565 as ZXV_RGB and ZXV_STD_RGB565 of zxv.h: 215 is the normal level, 255 the bright"""
+    assert screen.rgb565(0xD7, 0, 0) == 27 << 11
+    assert screen.rgb565(0xFF, 0xFF, 0xFF) == 0xFFFF
+    assert screen.rgb565(10, 200, 30) == 1 << 11 | 50 << 5 | 4
+    assert screen.STD565[7] == 27 << 11 | 54 << 5 | 27
+    assert screen.STD565[8] == screen.STD565[0] == 0
+    assert screen.STD_INDEX[0] == 0  # Black is 0, not 8
+
+
+def test_png_palette():
+    """Colours that are not the standard ones: a palette, with the standard ones at their index and the others
+    in the free ones, in the order they appear"""
+    black, green, red, orange = (0, 0, 0), (10, 200, 30), (0xD7, 0, 0), (250, 128, 0)
+    rows = [b"".join(bytes((black, green, red, orange)[x % 4]) for x in range(256))] * 192
+    data = screen.png_screen(png(256, 192, rows))
+    assert len(data) == 4 + 32 + 24576
+    assert data[:4] == bytes([0, 0, 1, 0])  # Mode 0, border 0, with a palette
+    pal = list(struct.unpack_from("<16H", data, 4))
+    want = list(screen.STD565)
+    want[1], want[3] = screen.rgb565(*green), screen.rgb565(*orange)
+    assert pal == want
+    assert data[36:38] == bytes([0 | 1 << 4, 2 | 3 << 4])
+
+
+def test_png_palette_frame():
+    """The colour of the border corner goes the last one, and 0 is free if black is not used"""
+    grey, red, white = (99, 99, 99), (0xD7, 0, 0), (0xD7, 0xD7, 0xD7)
+    rows = []
+    for y in range(240):
+        inside = [24 <= y < 216 and 32 <= x < 288 for x in range(320)]
+        rows.append(b"".join(bytes((red if x % 2 else white) if inside[x] else grey) for x in range(320)))
+    data = screen.png_screen(png(320, 240, rows))
+    assert data[:4] == bytes([0, 0, 1, 0])  # The grey border, at index 0
+    pal = struct.unpack_from("<16H", data, 4)
+    assert pal[0] == screen.rgb565(*grey) and pal[2] == screen.STD565[2] and pal[7] == screen.STD565[7]
+    assert data[36] == 7 | 2 << 4
+
+
+def test_png_palette_8_last():
+    """Index 8 (the transparent one of the sprites) is the last free one"""
+    greys = [(i * 16, i * 16, i * 16) for i in range(1, 16)]  # 15 colours that are not standard, and black
+    rows = [b"".join(bytes(([(0, 0, 0)] + greys)[x % 16]) for x in range(256))] * 192
+    data = screen.png_screen(png(256, 192, rows))
+    pal = struct.unpack_from("<16H", data, 4)
+    assert pal[0] == 0
+    assert [pal[i] for i in (1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 8)] == [screen.rgb565(*g) for g in greys]
+    rows = [b"".join(bytes(greys[x % 14]) for x in range(256))] * 192  # 14 colours: 8 stays standard
+    pal = struct.unpack_from("<16H", screen.png_screen(png(256, 192, rows)), 4)
+    assert pal[8] == screen.STD565[8] and pal[0] == screen.rgb565(*greys[0])
+
+
+def test_png_too_many_colours():
+    rows = [b"".join(bytes((x % 17 * 10, 0, 0)) for x in range(256))] * 192
+    with pytest.raises(ZxvError, match="16 colours"):
+        screen.png_screen(png(256, 192, rows))
+
+
 def test_png_size():
     with pytest.raises(ZxvError):
         screen.png_screen(png(2, 2, [b"\0" * 6, b"\0" * 6]))
@@ -89,6 +147,25 @@ def test_gfx_first_screen():
     assert screen.gfx_screen(gfx) == shot
     with pytest.raises(ZxvError):
         screen.gfx_screen(gfx[: 8 + 8 + len(sprite)].replace(b"\x02\x00", b"\x01\x00", 1))
+
+
+def test_gfx_screen_palette():
+    """A screen with its palette goes as it is; unknown flags are not valid"""
+    pal = struct.pack("<16H", *range(0x1000, 0x1010))
+    shot = bytes([0, 4, 1, 0]) + pal + b"\x34" * 24576
+
+    def gfx(s: bytes) -> bytes:
+        return b"ZXVG" + struct.pack("<BBH", 1, 0, 1) + struct.pack("<BBHI", 5, 0, 0, len(s)) + s
+
+    assert screen.gfx_screen(gfx(shot)) == shot
+    for bad in (
+        bytes([0, 4, 3, 0]) + pal + b"\x34" * 24576,  # Flag bit 1
+        bytes([0, 4, 0, 0]) + pal + b"\x34" * 24576,  # A palette without its flag
+        bytes([0, 4, 1, 0]) + b"\x34" * 24576,  # The flag without a palette
+        bytes([0, 4, 1, 1]) + pal + b"\x34" * 24576,  # Byte 3 is 0
+    ):
+        with pytest.raises(ZxvError):
+            screen.gfx_screen(gfx(bad))
 
 
 def test_header_with_screen():

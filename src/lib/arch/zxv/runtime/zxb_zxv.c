@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_zxv.c - What is only in ZX-V, for zxv.bas: the video modes and pages,
- * scroll and colour changes, sprites, filled shapes, the keys, joysticks
+ * scroll, colour changes and palettes, sprites, filled shapes, the keys, joysticks
  * and the AY chips. The same as the commands of the ZX-V BASIC (spec §7.8):
  * the engine of the ROM draws on the drawing page, with the y downwards, and
  * colour 8 is transparent.
@@ -65,7 +65,8 @@ static void clear_page(int n)
 
 /* MODE n[, w, h]: mode 1 (512 x 384) or mode 0 (256 x 192, or a bigger
  * page: 512 x 384, 1024 x 192 or 256 x 768). Both pages are cleared, page 0
- * is shown and drawn on, and the scroll, colour changes and CLIP go. */
+ * is shown and drawn on, and the scroll, colour changes (REMAP and
+ * PALETTE) and CLIP go. */
 void zxb_zxv_mode(int mode, int w, int h)
 {
     static const uint16_t size0[4][2] = { { 256, 192 }, { 512, 384 }, { 1024, 192 }, { 256, 768 } };
@@ -86,8 +87,10 @@ void zxb_zxv_mode(int mode, int w, int h)
     REG16(ZXV_V_SCROLL_X) = 0;
     REG16(ZXV_V_SCROLL_Y) = 0;
     for (int t = 0; t < 4; t++)
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 16; i++) {
             REG8(ZXV_REMAP_TABLES + t * 16 + i) = (uint8_t)i;
+            REG16(ZXV_PALETTE(t) + 2 * i) = ZXV_STD_RGB565(i);
+        }
     REG8(ZXV_V_REMAP) = 0;
     clip_on = 0;
     for (int p = 1; p >= 0; p--) {
@@ -130,6 +133,24 @@ void zxb_zxv_remap(int c, int n)
     colour(c);
     colour(n);
     REG8(ZXV_REMAP_TABLES + c) = (uint8_t)n;
+}
+
+/* PALETTE c, r, g, b: colour c of table 0 is seen with that red, green and
+ * blue (0-255), the nearest RGB565 (ZXV_RGB, as the ZX-V BASIC); with
+ * c = -1, the standard colours in tables 0 to 2 (PALETTE alone there) */
+void zxb_zxv_palette(int c, int r, int g, int b)
+{
+    if (c < 0) {
+        for (int t = 0; t < 3; t++)
+            for (int i = 0; i < 16; i++)
+                REG16(ZXV_PALETTE(t) + 2 * i) = ZXV_STD_RGB565(i);
+        return;
+    }
+    colour(c);
+    range(r, 0, 255);
+    range(g, 0, 255);
+    range(b, 0, 255);
+    REG16(ZXV_PALETTE(0) + 2 * c) = ZXV_RGB(r, g, b);
 }
 
 /* WAIT n: at least until the next VBLANK, and until n frames have gone since

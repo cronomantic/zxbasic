@@ -7,7 +7,8 @@
  * .bin for the rest. LOAD without extension tries that one and then .tap.
  *
  * - The screen in a .gfx is the ZX-V screen shown, a screen object: its
- *   mode, the border colour and the pixels of the page as in the VRAM.
+ *   mode, the border colour, its colours if they are not the standard ones
+ *   (D90) and the pixels of the page as in the VRAM.
  * - Any other name gets the bytes as they are: a .scr is the Spectrum
  *   screen (the 6912 bytes of the shadow of 16384).
  * - A .tap is a Spectrum tape (a CODE header and the data), for Spectrum
@@ -23,6 +24,7 @@
 
 #define GFX_SCREEN  5                   /* A screen object in a .gfx */
 #define REG8(a)     (*(volatile uint8_t *)(uintptr_t)(a))
+#define REG16(a)    (*(volatile uint16_t *)(uintptr_t)(a))
 
 void zxb_ERROR(int code);
 void zxb_fail(const char *msg);
@@ -136,9 +138,10 @@ static int read_n(int f, uint8_t *buf, uint32_t n)
     return r == (int)n;
 }
 
-/* --- The ZX-V screen in a .gfx (ZX-V decision D89) ---------------------------
+/* --- The ZX-V screen in a .gfx (ZX-V decisions D89 and D90) -------------------
  *
- * The page shown, as a screen object: the mode, the border colour, 0 and the
+ * The page shown, as a screen object: the mode, the border colour, the flags,
+ * 0, the palette if the colours are not the standard ones (16 RGB565) and the
  * pixels as in the VRAM (192 lines of 128 bytes in mode 0, 384 of 256 in
  * mode 1). With a bigger page (MODE 0 of zxv.bas with a virtual field), its
  * top left window. */
@@ -148,16 +151,34 @@ static uint8_t *shown_page(void)
     return (uint8_t *)(uintptr_t)(REG8(ZXV_V_PAGE) & 1 ? ZXV_VRAM1_BASE : ZXV_VRAM0_BASE);
 }
 
+/* How the 16 values are seen on the screen (with the remap table in use and
+ * its palette); 1 if they are not the standard colours */
+static int screen_colours(uint16_t c[16])
+{
+    uint32_t t = REG8(ZXV_V_REMAP) & 3;
+    int other = 0;
+    for (uint32_t v = 0; v < 16; v++) {
+        c[v] = REG16(ZXV_PALETTE(t) + 2 * (REG8(ZXV_REMAP_TABLES + t * 16 + v) & 15));
+        other |= c[v] != ZXV_STD_RGB565(v);
+    }
+    return other;
+}
+
 /* A .gfx with one object, the screen */
 static void save_screen(int f)
 {
     int mode = REG8(ZXV_V_MODE) & 1;
-    uint32_t size = ZXV_SCREEN_SIZE(mode);
-    uint8_t h[16 + ZXV_SCREEN_HEAD] = { 'Z', 'X', 'V', 'G', 1, 0, 1, 0, GFX_SCREEN, 0, 0, 0 };
+    uint16_t c[16];
+    int flags = screen_colours(c) ? ZXV_SCREEN_F_PALETTE : 0;
+    uint32_t size = ZXV_SCREEN_SIZE_F(mode, flags), hn = 16 + ZXV_SCREEN_HEAD;
+    uint8_t h[16 + ZXV_SCREEN_HEAD + ZXV_SCREEN_PALETTE] = { 'Z', 'X', 'V', 'G', 1, 0, 1, 0, GFX_SCREEN, 0, 0, 0 };
     h[12] = (uint8_t)size, h[13] = (uint8_t)(size >> 8), h[14] = (uint8_t)(size >> 16);
     h[16] = (uint8_t)mode;
     h[17] = REG8(ZXV_V_BORDER) & 15;
-    check(zxv_file_write(f, h, sizeof(h)), f);
+    h[18] = (uint8_t)flags;
+    for (int i = 0; flags && i < 16; i++, hn += 2)
+        h[hn] = (uint8_t)c[i], h[hn + 1] = (uint8_t)(c[i] >> 8);
+    check(zxv_file_write(f, h, hn), f);
     uint32_t n = mode ? 256 : 128, lines = mode ? 384 : 192, stride = (uint32_t)zxb_wpl * 4;
     const uint8_t *v = shown_page();
     for (uint32_t y = 0; y < lines; y++)
@@ -165,12 +186,14 @@ static void save_screen(int f)
 }
 
 /* The first screen of a .gfx: LOAD puts it on the page shown, with its mode
- * (if it is not the current one, as MODE of zxv.bas) and its border; VERIFY
- * compares it. Returns 0 if the file is not right. The Spectrum screen (the
- * shadow that PEEK, SCREEN$, ATTR and POINT read) does not change. */
+ * (if it is not the current one, as MODE of zxv.bas), its border and its
+ * palette, if it has one (in table 0, the one used then); VERIFY compares it,
+ * and its colours with those SAVE would write. Returns 0 if the file is not
+ * right. The Spectrum screen (the shadow that PEEK, SCREEN$, ATTR and POINT
+ * read) does not change. */
 static int load_screen(int f, int is_load)
 {
-    uint8_t h[8], line[256];
+    uint8_t h[8], line[256], pal[ZXV_SCREEN_PALETTE];
     if (!read_n(f, h, 8) || h[0] != 'Z' || h[1] != 'X' || h[2] != 'V' || h[3] != 'G' || h[4] != 1)
         return 0;
     for (uint32_t i = h[6] | (uint32_t)h[7] << 8; i > 0; i--) {
@@ -184,12 +207,20 @@ static int load_screen(int f, int is_load)
         }
         if (!read_n(f, h, ZXV_SCREEN_HEAD))
             return 0;
-        int mode = h[0];
-        if (mode > 1 || h[1] > 15 || h[2] || h[3] || len != ZXV_SCREEN_SIZE(mode))
+        int mode = h[0], has_pal = h[2] & ZXV_SCREEN_F_PALETTE;
+        if (mode > 1 || h[1] > 15 || (h[2] & ~ZXV_SCREEN_F_PALETTE) || h[3] || len != ZXV_SCREEN_SIZE_F(mode, h[2]))
+            return 0;
+        if (has_pal && !read_n(f, pal, ZXV_SCREEN_PALETTE))
             return 0;
         int cur = REG8(ZXV_V_MODE) & 1;
-        if (!is_load && mode != cur)
-            return 0;
+        if (!is_load) {
+            uint16_t c[16];
+            if (mode != cur || !has_pal != !screen_colours(c))
+                return 0;
+            for (int i = 0; has_pal && i < 16; i++)
+                if ((pal[2 * i] | pal[2 * i + 1] << 8) != c[i])
+                    return 0;
+        }
         if (is_load && (mode != cur || REG8(ZXV_V_VSIZE)))
             zxb_zxv_mode(mode, 0, 0);
         uint32_t n = mode ? 256 : 128, lines = mode ? 384 : 192, stride = (uint32_t)zxb_wpl * 4;
@@ -208,6 +239,13 @@ static int load_screen(int f, int is_load)
                 zxb_BORDER(h[1]);
             else
                 REG8(ZXV_V_BORDER) = h[1];
+            if (has_pal) {
+                for (int i = 0; i < 16; i++) {
+                    REG8(ZXV_REMAP_TABLES + i) = (uint8_t)i;
+                    REG16(ZXV_PALETTE(0) + 2 * i) = (uint16_t)(pal[2 * i] | pal[2 * i + 1] << 8);
+                }
+                REG8(ZXV_V_REMAP) = 0;
+            }
         }
         return 1;
     }

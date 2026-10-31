@@ -15,7 +15,9 @@
 ' Not as in the ZX-V BASIC:
 '  - The sprite of a string is GRABSTR n, w, a$ (GRAB n, w, a$ there).
 '  - KEY, JOY and HIT are functions: KEY(9), not KEY 9.
-'  - REMAP and SOUND take one pair at a time, and REMAP alone is REMAPRESET.
+'  - REMAP and SOUND take one pair at a time and PALETTE one colour, REMAP
+'    and PALETTE only change table 0 (no #t), and REMAP alone is REMAPRESET
+'    and PALETTE alone PALETTERESET.
 '  - POLY takes up to 8 points.
 '  - SCREEN can not be used with screen.bas (its SCREEN$ is also screen).
 '  - The music and the effects: MUSICLOAD f$ and SFXLOAD f$ (LOAD f$ MUSIC
@@ -33,7 +35,8 @@ REM Avoid recursive / multiple inclusion
 REM MODE n[, w, h]: mode 0 (256 x 192, 32 x 24 characters) or 1 (512 x 384).
 REM In mode 0 the page can be bigger than the screen (512 x 384, 1024 x 192
 REM or 256 x 768), and SCROLL moves the screen over it. Both pages are
-REM cleared, page 0 is shown and drawn on, and the scroll, REMAP and CLIP go.
+REM cleared, page 0 is shown and drawn on, and the scroll, REMAP, PALETTE
+REM and CLIP go.
 sub MODE(m as UByte, w as UInteger = 0, h as UInteger = 0)
     asm
     lw a0, 8(s0)
@@ -85,6 +88,27 @@ sub REMAPRESET
     li a0, -1
     li a1, 0
     zxb_ccall zxb_zxv_remap
+    end asm
+end sub
+
+REM PALETTE c, r, g, b: colour c (0-15) is seen with that red, green and
+REM blue (0-255 each; 215 is the level of the standard colours, 255 the
+REM bright one), the nearest one ZX-V shows, at once and on all the screen
+sub PALETTE(c as UByte, r as UInteger, g as UInteger, b as UInteger)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    zxb_ccall zxb_zxv_palette
+    end asm
+end sub
+
+REM PALETTERESET: the standard colours again (PALETTE with no arguments)
+sub PALETTERESET
+    asm
+    li a0, -1
+    zxb_ccall zxb_zxv_palette
     end asm
 end sub
 

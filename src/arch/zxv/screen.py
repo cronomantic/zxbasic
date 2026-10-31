@@ -6,20 +6,24 @@
 # --------------------------------------------------------------------
 
 """The loading screen of a .zxv program (zxbc --arch=zxv --loading-screen FILE): the data of a .gfx screen
-object (ZX-V decision D89, dev/basic.md §9.8): the mode (0 or 1), the border colour (0-15), 0 (u16) and the
-pixels of the page as in the VRAM, 4 bits each (the low nibble is the even pixel), 192 lines of 128 bytes in
-mode 0 or 384 lines of 256 bytes in mode 1.
+object (ZX-V decisions D89 and D90, dev/basic.md §9.8): the mode (0 or 1), the border colour (0-15), the flags
+(bit 0: it has a palette), 0, the palette if it has one (16 RGB565 colours, u16) and the pixels of the page as
+in the VRAM, 4 bits each (the low nibble is the even pixel), 192 lines of 128 bytes in mode 0 or 384 lines of
+256 bytes in mode 1.
 
 From a PNG (256x192 is mode 0 and 512x384 mode 1, with border 0; the frame with its border, 320x240 or
-640x480, takes the border colour of its top left corner) or the first screen of a .gfx. From
-sdk/tools/png2gfx.py of ZX-V (MIT)."""
+640x480, takes the border colour of its top left corner) or the first screen of a .gfx, with its palette. A
+PNG keeps its colours (in RGB565): if they are not the standard ones, the screen has a palette with them (16
+at most). From sdk/tools/png2gfx.py of ZX-V (MIT)."""
 
 import struct
 import zlib
 
 from src.arch.zxv.zxvfile import ZxvError
 
-HEAD = 4  # Mode, border, 0 (u16)
+HEAD = 4  # Mode, border, flags, 0
+F_PALETTE = 0x01  # The flags: it has a palette, 16 RGB565 colours (32 bytes) before the pixels
+PALETTE_SIZE = 32
 TRANSPARENT = 8  # Colour 8 is the transparent one in sprites; in a screen it is black (0)
 
 # The active area inside the image, by size: mode, x, y (ZX-V spec §4.4)
@@ -40,19 +44,48 @@ def palette() -> list[tuple[int, int, int]]:
 
 
 PALETTE = palette()
-EXACT = {c: i for i, c in enumerate(PALETTE) if i != TRANSPARENT}
 
 
-def colour(r: int, g: int, b: int, a: int) -> int:
-    """The ZX-V colour of a pixel: the exact one, or the nearest one; transparent pixels are black"""
-    if a < 128:
-        return 0
-    if (r, g, b) in EXACT:
-        return EXACT[(r, g, b)]
-    return min(
-        (i for i in range(16) if i != TRANSPARENT),
-        key=lambda i: (PALETTE[i][0] - r) ** 2 + (PALETTE[i][1] - g) ** 2 + (PALETTE[i][2] - b) ** 2,
-    )
+def to5(v: int) -> int:
+    """A channel of 8 bits in 5, with the curve of the output (ZXV_TO5 in zxv.h, spec §4.1)"""
+    return (v * 27 + 107) // 215 if v <= 215 else 27 + ((v - 215) * 4 + 20) // 40
+
+
+def to6(v: int) -> int:
+    """The green of 8 bits in 6 (ZXV_TO6)"""
+    return (v * 54 + 107) // 215 if v <= 215 else 54 + ((v - 215) * 9 + 20) // 40
+
+
+def rgb565(r: int, g: int, b: int) -> int:
+    """A colour of 8 bits a channel in RGB565, as ZXV_RGB"""
+    return to5(r) << 11 | to6(g) << 5 | to5(b)
+
+
+# The standard colours in RGB565 (ZXV_STD_RGB565) and the index of each one (black is 0)
+STD565 = [rgb565(*c) for c in PALETTE]
+STD_INDEX = {c: i for i, c in reversed(list(enumerate(STD565)))}
+
+
+def screen_palette(colours: list[int]) -> list[int] | None:
+    """The palette of a screen with these RGB565 colours (different, in the order they appear): None if they are
+    all standard ones; otherwise the 16 colours, each standard one at its own index (black at 0) and the others
+    in the free ones, in order (8 the last: it is the transparent one of the sprites), and the standard colours
+    in those not used. An error if they are more than 16."""
+    if all(c in STD_INDEX for c in colours):
+        return None
+    if len(colours) > 16:
+        raise ZxvError(
+            f"a screen has up to 16 colours and this one has {len(colours)} "
+            "(reduce them to 16, or use the ZX-V standard ones)"
+        )
+    pal, used = list(STD565), [False] * 16
+    for c in colours:
+        if c in STD_INDEX:
+            used[STD_INDEX[c]] = True
+    free = [i for i in range(16) if not used[i] and i != TRANSPARENT] + ([] if used[TRANSPARENT] else [TRANSPARENT])
+    for c, i in zip([c for c in colours if c not in STD_INDEX], free):
+        pal[i] = c
+    return pal
 
 
 def read_png(data: bytes) -> tuple[int, int, list[list[tuple[int, int, int, int]]]]:
@@ -164,7 +197,9 @@ def read_png(data: bytes) -> tuple[int, int, list[list[tuple[int, int, int, int]
 
 
 def png_screen(data: bytes) -> bytes:
-    """The screen of a PNG"""
+    """The screen of a PNG. Each pixel keeps its colour in RGB565 (transparent pixels are black): if they are
+    all standard ones, no palette; otherwise 16 at most, with the palette of screen_palette (the colours in the
+    order they appear, row by row, and the border corner the last)"""
     w, h, rgba = read_png(data)
     if (w, h) not in FRAMES:
         raise ZxvError(
@@ -172,26 +207,43 @@ def png_screen(data: bytes) -> bytes:
             f"not {w}x{h}"
         )
     mode, x0, y0 = FRAMES[(w, h)]
+    pw, ph = (512, 384) if mode else (256, 192)
     cache: dict[tuple[int, int, int, int], int] = {}
 
-    def at(x: int, y: int) -> int:
-        p = rgba[y][x]
+    def c565(p: tuple[int, int, int, int]) -> int:
         if p not in cache:
-            cache[p] = colour(*p)
+            r, g, b, a = p
+            cache[p] = 0 if a < 128 else rgb565(r, g, b)
         return cache[p]
 
-    border = at(0, 0) if x0 else 0
-    pw, ph = (512, 384) if mode else (256, 192)
+    area = [[c565(p) for p in row[x0 : x0 + pw]] for row in rgba[y0 : y0 + ph]]
+    corner = c565(rgba[0][0]) if x0 else None
+    seen = dict.fromkeys(c for row in area for c in row)
+    if corner is not None:
+        seen.setdefault(corner)
+    pal = screen_palette(list(seen))
+    index = STD_INDEX if pal is None else {c: i for i, c in reversed(list(enumerate(pal)))}
+    border = 0 if corner is None else index[corner]
+    head = bytes([mode, border, 0 if pal is None else F_PALETTE, 0])
+    if pal is not None:
+        head += struct.pack("<16H", *pal)
     pixels = bytearray()
-    for y in range(y0, y0 + ph):
-        for x in range(x0, x0 + pw, 2):
-            pixels.append(at(x, y) | at(x + 1, y) << 4)
-    return bytes([mode, border, 0, 0]) + bytes(pixels)
+    for row in area:
+        for x in range(0, pw, 2):
+            pixels.append(index[row[x]] | index[row[x + 1]] << 4)
+    return head + bytes(pixels)
+
+
+def screen_size(data: bytes) -> int:
+    """The size of a screen object by its head, or -1 if it is not valid (unknown flags, too)"""
+    if len(data) < HEAD or data[0] > 1 or data[1] > 15 or data[2] & ~F_PALETTE or data[3]:
+        return -1
+    return HEAD + (PALETTE_SIZE if data[2] & F_PALETTE else 0) + pixels_size(data[0])
 
 
 def check_screen(data: bytes) -> bool:
     """Is it the data of a valid screen object?"""
-    return len(data) >= HEAD and data[0] <= 1 and data[1] <= 15 and len(data) == HEAD + pixels_size(data[0])
+    return len(data) == screen_size(data)
 
 
 def gfx_screen(data: bytes) -> bytes:

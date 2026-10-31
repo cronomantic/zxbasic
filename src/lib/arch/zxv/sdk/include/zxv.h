@@ -106,6 +106,24 @@
 #define ZXV_V_VSIZE             (ZXV_VIDEO_REGS + 0x09u)   /* u8, campo virtual (modo 0) */
 #define ZXV_V_OUT_INFO          (ZXV_VIDEO_REGS + 0x0Cu)   /* u32, solo lectura */
 
+/* Las paletas (spec §4.6, D90): 4 tablas de 16 colores RGB565 (u16). Un píxel
+ * de valor v en una línea con la tabla t se ve con
+ * ZXV_PALETTES[t][ZXV_REMAP_TABLES[t][v]]. */
+#define ZXV_PALETTES            (ZXV_VIDEO_REGS + 0x80u)
+#define ZXV_PALETTE(t)          (ZXV_PALETTES + 32u * (uint32_t)(t))
+/* Un color RGB565 de r, g, b de 0 a 255, con la curva de la salida (spec
+ * §4.1): 215 (D7) es el nivel normal, 27 (54 en verde), y de ahí a 255 en
+ * línea recta. ZXV_RGB(215, 0, 0) es el rojo de siempre. */
+#define ZXV_TO5(v)              ((v) <= 215u ? ((v) * 27u + 107u) / 215u : 27u + (((v) - 215u) * 4u + 20u) / 40u)
+#define ZXV_TO6(v)              ((v) <= 215u ? ((v) * 54u + 107u) / 215u : 54u + (((v) - 215u) * 9u + 20u) / 40u)
+#define ZXV_RGB(r, g, b)        ((uint16_t)((ZXV_TO5((uint32_t)(r)) << 11) | (ZXV_TO6((uint32_t)(g)) << 5) | \
+                                            ZXV_TO5((uint32_t)(b))))
+/* El color de siempre del índice i (spec §4.1), en RGB565. */
+#define ZXV_STD_CHAN5(i, bit)   (((i) & (bit)) ? (((i) & 8) ? 31u : 27u) : 0u)
+#define ZXV_STD_RGB565(i)       ((uint16_t)((ZXV_STD_CHAN5(i, 2) << 11) | \
+                                            ((((i) & 4) ? (((i) & 8) ? 63u : 54u) : 0u) << 5) | \
+                                            ZXV_STD_CHAN5(i, 1)))
+
 #define ZXV_VFLAG_LINETAB       0x01u
 #define ZXV_VFLAG_BLANK         0x02u
 
@@ -383,6 +401,12 @@
 #define ZXV_SCREEN_HEAD         4
 #define ZXV_SCREEN_PIXELS(mode) ((mode) ? 98304u : 24576u)
 #define ZXV_SCREEN_SIZE(mode)   (ZXV_SCREEN_HEAD + ZXV_SCREEN_PIXELS(mode))
+/* Las marcas (el byte 2): con paleta, sus 16 colores RGB565 (32 bytes) van
+ * antes de los píxeles (D90). */
+#define ZXV_SCREEN_F_PALETTE    0x01u
+#define ZXV_SCREEN_PALETTE      32u
+#define ZXV_SCREEN_SIZE_F(mode, flags) \
+    (ZXV_SCREEN_SIZE(mode) + (((flags) & ZXV_SCREEN_F_PALETTE) ? ZXV_SCREEN_PALETTE : 0u))
 
 /* --- Temporización ------------------------------------------------------ */
 #define ZXV_FRAME_HZ            60      /* D81; lo del Spectrum, en cincuentavos */
