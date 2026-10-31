@@ -396,8 +396,8 @@
 #define ZXV_H_SCREEN            0x40    /* u32: la pantalla de carga, detrás de la cabecera */
 
 /* --- Pantallas (D89): el objeto pantalla de un .gfx y la pantalla de carga
- * de un .zxv o un .zvb. Modo (u8), color del borde (u8), 0 (u16) y los
- * píxeles de la página como en la VRAM. ------------------------------------ */
+ * de un .zxv o un .zvb. Modo (u8), color del borde (u8), marcas (u8), 0 (u8),
+ * la paleta si la lleva (D90) y los píxeles de la página como en la VRAM. -- */
 #define ZXV_SCREEN_HEAD         4
 #define ZXV_SCREEN_PIXELS(mode) ((mode) ? 98304u : 24576u)
 #define ZXV_SCREEN_SIZE(mode)   (ZXV_SCREEN_HEAD + ZXV_SCREEN_PIXELS(mode))
