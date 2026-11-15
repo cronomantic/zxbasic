@@ -1,0 +1,9 @@
+nivel 1 2 3
+otro (card) 9 9 9
+path 1 2
+verify ok
+music 1
+sfx 1
+
+ERROR T File not found
+[exit 100]

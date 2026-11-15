@@ -48,6 +48,14 @@ extern volatile uint32_t *zxb_vram;     /* The drawing page, where the Spectrum 
 extern int zxb_wpl;                     /* Its 32-bit words per line */
 uint32_t zxb_IN(uint32_t port);         /* The Spectrum ports: keyboard and Kempston */
 
+/* Reading files: the one in the current folder or, if it is not there,
+ * the one the program carries inside (zxbc --embed; zxb_embed.c). The
+ * handles are only for these functions. */
+int zxb_rd_open(const char *name);
+int zxb_rd_read(int f, void *buf, uint32_t n);
+int zxb_rd_seek(int f, int32_t offset, int whence);
+int zxb_rd_close(int f);
+
 /* Others */
 int zxb_key(void);              /* Next key of the queue, or 0 */
 void zxb_echo(const char *s, int n);   /* -DZXB_TEST: to the zxv-cli console */

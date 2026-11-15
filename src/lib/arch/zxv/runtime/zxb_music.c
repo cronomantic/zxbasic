@@ -57,30 +57,30 @@ static uint8_t *load(zstr s, const char *ext, int sfx, uint32_t *n)
     int afx = sfx && dot >= 0 && len - (uint32_t)dot == 4 && (name[dot + 1] | 0x20) == 'a' &&
               (name[dot + 2] | 0x20) == 'f' && (name[dot + 3] | 0x20) == 'x';
     uint32_t pre = afx ? 3 : 0;
-    int f = zxv_file_open(name, ZXV_O_READ);
+    int f = zxb_rd_open(name);
     if (f < 0)
         zxb_fail(f == ZXV_E_NOENT ? "T File not found" : f == ZXV_E_NOCARD ? "U No SD card" : "V Disk error");
-    int size = zxv_file_seek(f, 0, ZXV_SEEK_END);
-    if (size <= 0 || zxv_file_seek(f, 0, ZXV_SEEK_SET) != 0) {
-        zxv_file_close(f);
+    int size = zxb_rd_seek(f, 0, ZXV_SEEK_END);
+    if (size <= 0 || zxb_rd_seek(f, 0, ZXV_SEEK_SET) != 0) {
+        zxb_rd_close(f);
         zxb_ERROR(ERR_TAPE);
     }
     uint8_t *p = zxb_try_alloc((uint32_t)size + pre);
     if (!p) {
-        zxv_file_close(f);
+        zxb_rd_close(f);
         zxb_ERROR(ERR_OUT_OF_MEMORY);
     }
     uint32_t got = 0;
     while (got < (uint32_t)size) {
-        int r = zxv_file_read(f, p + pre + got, (uint32_t)size - got);
+        int r = zxb_rd_read(f, p + pre + got, (uint32_t)size - got);
         if (r <= 0) {
-            zxv_file_close(f);
+            zxb_rd_close(f);
             zxb_free(p);
             zxb_ERROR(ERR_TAPE);
         }
         got += (uint32_t)r;
     }
-    zxv_file_close(f);
+    zxb_rd_close(f);
     if (afx) {
         p[0] = 1;                       /* one effect, after these 3 bytes */
         p[1] = 1;

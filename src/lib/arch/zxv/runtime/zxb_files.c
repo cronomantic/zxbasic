@@ -89,7 +89,7 @@ static void check(int r, int f)
 {
     if (r < 0) {
         if (f >= 0)
-            zxv_file_close(f);
+            zxb_rd_close(f);
         file_error(r);
     }
 }
@@ -133,7 +133,7 @@ static void write_block(int f, uint8_t flag, const uint8_t *hdr, uint32_t start,
 
 static int read_n(int f, uint8_t *buf, uint32_t n)
 {
-    int r = zxv_file_read(f, buf, n);
+    int r = zxb_rd_read(f, buf, n);
     check(r, f);
     return r == (int)n;
 }
@@ -201,7 +201,7 @@ static int load_screen(int f, int is_load)
             return 0;
         uint32_t len = h[4] | (uint32_t)h[5] << 8 | (uint32_t)h[6] << 16 | (uint32_t)h[7] << 24;
         if (h[0] != GFX_SCREEN || h[1]) {
-            if (zxv_file_seek(f, (int32_t)len, ZXV_SEEK_CUR) < 0)
+            if (zxb_rd_seek(f, (int32_t)len, ZXV_SEEK_CUR) < 0)
                 return 0;
             continue;
         }
@@ -264,7 +264,7 @@ void zxb_SAVE_CODE(uint32_t len, uint32_t start, zstr s)
         int f = zxv_file_open(name, ZXV_O_WRITE | ZXV_O_CREATE | ZXV_O_TRUNC);
         check(f, -1);
         save_screen(f);
-        zxv_file_close(f);
+        zxb_rd_close(f);
         return;
     }
     int tape = ext_is(name, "tap");
@@ -296,11 +296,12 @@ void zxb_SAVE_CODE(uint32_t len, uint32_t start, zstr s)
             check(zxv_file_write(f, buf, n), f);
         }
     }
-    zxv_file_close(f);
+    zxb_rd_close(f);
 }
 
 /* LOAD (is_load) or VERIFY name CODE [start [, len]] (and SCREEN$ and DATA).
- * Without start (0), the address of the tape header; without len (0), all. */
+ * Without start (0), the address of the tape header; without len (0), all.
+ * The file can be one the program carries inside (zxb_rd_open). */
 void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
 {
     char name[NAME_MAX + 8], tname[10];
@@ -311,19 +312,19 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
         while (name[n])
             n++;
         add_ext(name, block_ext(start, len));
-        f = zxv_file_open(name, ZXV_O_READ);
-        if (f == ZXV_E_NOENT) {
+        f = zxb_rd_open(name);
+        if (f == ZXV_E_NOENT || f == ZXV_E_NOCARD) {
             name[n] = 0;
             add_ext(name, "tap");
-            f = zxv_file_open(name, ZXV_O_READ);
+            f = zxb_rd_open(name);
         }
     } else {
-        f = zxv_file_open(name, ZXV_O_READ);
+        f = zxb_rd_open(name);
     }
     check(f, -1);
     if (is_screen(start, len) && ext_is(name, "gfx")) {
         int ok = load_screen(f, (int)is_load);
-        zxv_file_close(f);
+        zxb_rd_close(f);
         if (!ok)
             zxb_ERROR(ERR_TAPE);
         return;
@@ -350,12 +351,12 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
                     avail = (b[0] | (uint32_t)b[1] << 8) - 2;
                     break;
                 }
-            } else if (zxv_file_seek(f, (int32_t)n, ZXV_SEEK_CUR) < 0) {
+            } else if (zxb_rd_seek(f, (int32_t)n, ZXV_SEEK_CUR) < 0) {
                 goto bad;
             }
         }
     } else if (!start) {
-        zxv_file_close(f);
+        zxb_rd_close(f);
         zxb_ERROR(9);                   /* A Invalid argument: raw bytes need an address */
     }
     if (len == 0 || len > avail)
@@ -364,7 +365,7 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
     uint32_t done = 0;
     while (done < len) {
         uint32_t want = len - done < sizeof(buf) ? len - done : sizeof(buf);
-        int n = zxv_file_read(f, buf, want);
+        int n = zxb_rd_read(f, buf, want);
         check(n, f);
         if (n == 0)
             break;
@@ -379,9 +380,9 @@ void zxb_LOAD_CODE(uint32_t is_load, uint32_t len, uint32_t start, zstr s)
     }
     if (tape && done < len)
         goto bad;
-    zxv_file_close(f);
+    zxb_rd_close(f);
     return;
 bad:
-    zxv_file_close(f);
+    zxb_rd_close(f);
     zxb_ERROR(ERR_TAPE);
 }

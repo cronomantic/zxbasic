@@ -13,6 +13,8 @@ Needs the RISC-V GCC toolchain:
   ZXV_CFLAGS  more options for the runtime (-DZXB_TEST: PRINT also goes to the zxv-cli --test console)
 
 --loading-screen FILE (OPTIONS.loading_screen) puts a loading screen in the .zxv, a PNG or a .gfx (screen.py).
+--embed FILE (OPTIONS.embed, repeated) puts files inside the .zxv, for when they are not in the current folder
+(zxb_embed.c).
 """
 
 import os
@@ -35,6 +37,8 @@ LIB_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "lib", "arch", "zx
 RUNTIME_DIR = os.path.join(LIB_DIR, "runtime")
 SDK_DIR = os.path.join(LIB_DIR, "sdk")
 LOADING_SCREEN = "loading_screen"  # The option (zxbc --loading-screen FILE)
+EMBED = "embed"  # The option (zxbc --embed FILE, repeated)
+EMBED_NAME_MAX = 63  # The longest file name of ZX-V
 
 PROLOGUE = """\
 \t.option norelax
@@ -132,6 +136,49 @@ def finish(backend) -> int:
     return build(asm_text, OPTIONS.output_filename)
 
 
+def embed_table(files: list[str]) -> str | None:
+    """The assembler of zxb_embed_table (zxb_embed.c) with the files of --embed, or None after an error.
+
+    Each file goes by its name without the folder; two with the same name (without telling capitals apart)
+    are an error, because the program could only find one of them."""
+    names: dict[str, str] = {}
+    for path in files:
+        name = os.path.basename(path)
+        if not os.path.isfile(path):
+            errmsg.error(0, f"zxv: --embed: cannot read '{path}'")
+            return None
+        if (
+            not name.isascii()
+            or not name.isprintable()
+            or len(name) > EMBED_NAME_MAX
+            or any(c in name for c in '\\:*?"<>|')
+            or name.endswith((" ", "."))
+        ):
+            errmsg.error(0, f"zxv: --embed: '{name}' is not a valid ZX-V file name")
+            return None
+        if name.lower() in names:
+            errmsg.error(0, f"zxv: --embed: '{path}' and '{names[name.lower()]}' have the same name")
+            return None
+        names[name.lower()] = path
+
+    lines = ['\t.section .rodata.zxb_embed_table,"a"', "\t.balign 4", "\t.globl zxb_embed_table", "zxb_embed_table:"]
+    lines.append(f"\t.word {len(files)}")
+    for i in range(len(files)):
+        lines.append(f"\t.word __zxb_embed_name{i}, __zxb_embed_data{i}, __zxb_embed_end{i} - __zxb_embed_data{i}")
+    for i, path in enumerate(files):
+        full = os.path.abspath(path).replace("\\", "/").replace('"', '\\"')
+        lines += [
+            f"__zxb_embed_name{i}:",
+            f'\t.asciz "{os.path.basename(path)}"',
+            "\t.balign 4",
+            f"__zxb_embed_data{i}:",
+            f'\t.incbin "{full}"',
+            f"__zxb_embed_end{i}:",
+            "\t.balign 4",
+        ]
+    return "\n".join(lines) + "\n"
+
+
 def run(cmd: list[str]) -> bool:
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode:
@@ -165,10 +212,21 @@ def build(asm_text: str, output: str) -> int:
         if screen[0] == 0:
             defines.append("-DZXB_LOADING_SCREEN")
 
+    # The files of --embed: a table the runtime looks in (zxb_embed.c), in the program
+    embedded = OPTIONS[EMBED].value if EMBED in OPTIONS else []
+    table = embed_table(embedded) if embedded else ""
+    if table is None:
+        return 1
+
     with tempfile.TemporaryDirectory(prefix="zxb-zxv-") as tmp:
         prog = os.path.join(tmp, "prog.s")
         with open(prog, "wt", encoding="utf-8") as f:
             f.write(asm_text)
+        extra = []
+        if table:
+            extra.append(os.path.join(tmp, "embed.s"))
+            with open(extra[0], "wt", encoding="utf-8") as f:
+                f.write(table)
 
         elf = os.path.join(tmp, "prog.elf")
         cmd = [
@@ -199,6 +257,7 @@ def build(asm_text: str, output: str) -> int:
             os.path.join(sdk, "zxvlib.c"),
             *sources,
             prog,
+            *extra,
             "-lgcc",
             "-o",
             elf,

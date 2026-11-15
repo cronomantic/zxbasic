@@ -8,6 +8,7 @@ is a `.zxv` native program that its BASIC loads with `LOAD "name"`.
 python3 zxbc.py --arch=zxv program.bas    # program.zxv
 python3 zxbc.py --arch=zxv -f asm program.bas   # only the assembler (GNU as)
 python3 zxbc.py --arch=zxv --loading-screen title.png program.bas   # with a loading screen
+python3 zxbc.py --arch=zxv --embed song.pt3 --embed fx.afb game.bas   # with its files inside
 ```
 
 It only needs the RISC-V GCC toolchain (`riscv64-unknown-elf-gcc`; `ZXV_CROSS`
@@ -155,6 +156,33 @@ for `CODE` in the Spectrum, keeps the high half; and a tape block is 64 KB at
 most. `DATA` saves the memory of a variable (`SAVE "x" DATA v`), or all of them
 without a name; as in the Z80 target, an array needs `CODE`. A missing file
 stops the program with `T File not found`, as in the ZX-V BASIC.
+
+## Files inside the program
+
+`--embed FILE` (only with `--arch=zxv`, and as many times as needed) puts a file
+inside the `.zxv`, as the C games of ZX-V carry their graphics and music (ZX-V
+decision D82). `LOAD`, `VERIFY`, `MUSICLOAD` and `SFXLOAD` look first in the
+current folder and, if the file is not there (or there is no card), take the
+one inside with that name. So the `.zxv` works alone, also from the `ROM:`
+drive, and a file with the same name on the card takes the place of the one
+inside, to change it without compiling again.
+
+The name is the one of the file without its folder, and it is compared without
+the folder of the name asked for and without telling capitals apart:
+`MUSICLOAD "music/song"` finds an embedded `song.pt3`. Two files with the same
+name are an error. The files take room in the program, and loading one copies
+it (`MUSICLOAD` and `SFXLOAD` keep it in the heap), as when it comes from the
+card.
+
+```sh
+python3 zxbc.py --arch=zxv --embed game.pt3 --embed game.afb --embed level1.bin game.bas
+```
+
+```basic
+MUSICLOAD "game"               ' game.pt3: the card's, or the one inside
+SFXLOAD "game"
+LOAD "level1" CODE @map(0)
+```
 
 ## Libraries
 
