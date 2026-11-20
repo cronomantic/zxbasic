@@ -5,7 +5,7 @@
 ' BASIC commands (its manual, "Modos de vídeo y efectos", "Sprites, mapas de
 ' tiles y gráficos rápidos", KEY, JOY, SOUND, MUSIC and SFX). The runtime
 ' (zxb_zxv.c) calls the engine of the ROM, and zxb_music.c the music library
-' of the ZX-V SDK.
+' of the ZX-V SDK (also for SAMPLE).
 '
 ' The fast graphics (SPRITE, BOX, DISC, POLY, PIXEL...) count pixels from the
 ' top left corner of the drawing page, with the y downwards; colours are
@@ -22,7 +22,11 @@
 '  - SCREEN can not be used with screen.bas (its SCREEN$ is also screen).
 '  - The music and the effects: MUSICLOAD f$ and SFXLOAD f$ (LOAD f$ MUSIC
 '    and SFX there), MUSICPLAY, MUSICSTOP, MUSICPAUSE and MUSICCONTINUE, and
-'    the function SFXPLAYING (SFX alone there).
+'    the function SFXPLAYING (SFX alone there). MUSICLOAD does not take MOD,
+'    S3M or XM modules: zxv-music turns them into a .zxm first.
+'  - The recorded sounds: SAMPLELOAD f$, n (LOAD f$ SAMPLE n there), SAMPLE
+'    n, tone, vol, pan, c (SAMPLE n, tone, vol, pan; c there), SAMPLESTOP
+'    [c] and the function SAMPLEPLAYING (SAMPLE alone there).
 ' ----------------------------------------------------------------
 
 #ifndef __LIBRARY_ZXV__
@@ -274,10 +278,13 @@ function TIME as ULong
     end asm
 end function
 
-REM MUSICLOAD f$: loads a module made with a tracker (without an extension,
-REM f$.pt3): Pro Tracker 3 or Vortex Tracker II (.pt3, what zxv-tracker
-REM saves), a TurboSound (two modules, one on each AY chip), Pro Tracker 2,
-REM Sound Tracker, ASC Sound Master or a PSG dump. It goes in the heap.
+REM MUSICLOAD f$: loads a module (without an extension, the first there is
+REM of f$.zxm, f$.pt3, f$.vgm and f$.vgz): ZX-V's own .zxm (the two AY chips
+REM and the sample channels: what zxv-music makes of a MOD, S3M or XM),
+REM Pro Tracker 3 or Vortex Tracker II (.pt3, what zxv-tracker saves), a
+REM TurboSound (two modules, one on each AY chip), Pro Tracker 2, Sound
+REM Tracker, ASC Sound Master, a PSG dump or a VGM of AY chips (.vgm, or
+REM compressed: .vgz, which takes 32 KB more to play). It goes in the heap.
 sub MUSICLOAD(ByVal f$ as String)
     asm
     lw a0, 8(s0)
@@ -356,6 +363,53 @@ REM SFXPLAYING: 1 while any effect plays
 function SFXPLAYING as UByte
     asm
     zxb_ccall zxb_sfx_on
+    end asm
+end function
+
+REM SAMPLELOAD f$, n: loads a WAV (without an extension, f$.wav) as sound n
+REM (0 to 31) in the sound memory: 8 or 16 bits, mono or stereo, at any
+REM rate, and with its loop if it has one (a smpl chunk). Nothing stays in
+REM the RAM.
+sub SAMPLELOAD(ByVal f$ as String, n as UByte)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    zxb_ccall zxb_sample_load
+    end asm
+end sub
+
+REM SAMPLE n[, tone, vol, pan, c]: plays sound n without waiting, tone
+REM semitones up (or down, negative: 12 is an octave), with its volume (0 to
+REM 64) and pan (0 left, 128 centre, 255 right), on a sample channel the
+REM music does not use, or on channel c (0 to 11). A sound with a loop goes
+REM on until SAMPLESTOP.
+sub SAMPLE(n as UByte, tone as Float = 0, vol as UByte = 64, pan as UByte = 128, c as Byte = -1)
+    zxvSamplePlay(n, 65536 * 2 ^ (tone / 12) + 0.5, vol, pan, c)
+end sub
+
+sub zxvSamplePlay(n as UByte, mul as ULong, vol as UByte, pan as UByte, c as Byte)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    lw a4, 24(s0)
+    zxb_ccall zxb_sample
+    end asm
+end sub
+
+REM SAMPLESTOP [c]: stops the sound of channel c, or all of them
+sub SAMPLESTOP(c as Byte = -1)
+    asm
+    lw a0, 8(s0)
+    zxb_ccall zxb_sample_stop
+    end asm
+end sub
+
+REM SAMPLEPLAYING: 1 while any sound of SAMPLE plays
+function SAMPLEPLAYING as UByte
+    asm
+    zxb_ccall zxb_sample_on
     end asm
 end function
 

@@ -18,7 +18,7 @@
  */
 #include "zxb.h"
 
-#define ERR_TAPE    26                  /* R Tape loading error */
+#define ERR_TAPE    26                  /* R Loading error */
 #define ERR_RANGE   10                  /* B Integer out of range */
 #define NAME_MAX    64
 

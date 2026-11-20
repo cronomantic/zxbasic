@@ -92,7 +92,7 @@ static const char *const reports[] = {
     "D BREAK - CONT repeats", "E Out of DATA", "F Invalid file name", "G No room for line",
     "H STOP in INPUT", "I FOR without NEXT", "J Invalid I/O device", "K Invalid colour",
     "L BREAK into program", "M RAMTOP no good", "N Statement lost", "O Invalid stream",
-    "P FN without DEF", "Q Parameter error", "R Tape loading error",
+    "P FN without DEF", "Q Parameter error", "R Loading error",
 };
 
 uint32_t zxb_line;                      /* The line running, with --enable-break (0: unknown) */

@@ -16,6 +16,10 @@
  *       sin tono, bits 3-0 el volumen;
  *   b2-b3: el desplazamiento del tono.
  * Un ornamento: vuelta, largo y un desplazamiento de nota (con signo) por línea.
+ *
+ * Lo que hace cada orden (pt3_note, pt3_env, pt3_fx_*...) y cada paso
+ * (pt3_tick) va aparte de la lectura de los patrones: las pistas del AY de
+ * un .zxm (zxm.c) usan lo mismo.
  */
 #include "music_int.h"
 
@@ -25,28 +29,73 @@ extern const uint8_t pt3_vols[2][256];
 #define B(i)    mus_b(s->m, s->n, i)
 #define W(i)    mus_w(s->m, s->n, i)
 
-static void set_sample(pt3_t *s, pt3_chan_t *c, int n)
+/* --- Las órdenes -------------------------------------------------------------- */
+
+void pt3_tables(pt3_t *s, int version, int table)
 {
-    uint16_t p = W(0x69 + (n & 31) * 2);
-    c->smp_loop = B(p);
-    c->smp_len = B(p + 1);
-    c->smp = p + 2;
+    static const uint8_t tab[2][4] = { { 1, 2, 4, 6 }, { 0, 2, 3, 5 } };
+    s->version = (uint8_t)version;
+    s->notes = pt3_notes[tab[version <= 3][table & 3]];
+    s->vols = pt3_vols[version >= 5];
 }
 
-static void set_ornament(pt3_t *s, pt3_chan_t *c, int n)
+void pt3_sample_at(pt3_t *s, pt3_chan_t *c, uint32_t p)
 {
-    uint16_t p = W(0xA9 + (n & 15) * 2);
+    c->smp_loop = B(p);
+    c->smp_len = B(p + 1);
+    c->smp = (uint16_t)(p + 2);
+}
+
+void pt3_ornament_at(pt3_t *s, pt3_chan_t *c, uint32_t p)
+{
     c->orn_loop = B(p);
     c->orn_len = B(p + 1);
-    c->orn = p + 2;
+    c->orn = (uint16_t)(p + 2);
     c->pos_orn = 0;
 }
 
-static void set_position(pt3_t *s)
+/* Lo que vuelve a empezar con una nota o un silencio. */
+static void restart(pt3_chan_t *c)
 {
-    uint16_t pat = W(0x67) + B(0xC9 + s->pos) * 2;     /* patrón × 3 × 2 bytes */
-    for (int i = 0; i < 3; i++)
-        s->ch[i].addr = W(pat + i * 2);
+    c->pos_smp = 0;
+    c->amp_slide = 0;
+    c->noise_slide = 0;
+    c->env_slide = 0;
+    c->pos_orn = 0;
+    c->slide_cnt = 0;
+    c->sliding = 0;
+    c->acc = 0;
+    c->onoff = 0;
+}
+
+void pt3_note(pt3_chan_t *c, int note)
+{
+    c->note = (uint8_t)note;
+    restart(c);
+    c->enabled = 1;
+}
+
+void pt3_rest(pt3_chan_t *c)
+{
+    restart(c);
+    c->enabled = 0;
+}
+
+void pt3_env(pt3_t *s, pt3_chan_t *c, int shape, uint16_t base)
+{
+    c->env_on = 1;
+    s->r13 = (uint8_t)shape;
+    s->r13_write = 1;
+    s->env_base = base;
+    c->pos_orn = 0;
+    s->env_slide = 0;
+    s->env_delay_cnt = 0;
+}
+
+void pt3_env_off(pt3_chan_t *c)
+{
+    c->env_on = 0;
+    c->pos_orn = 0;
 }
 
 static int note_freq(pt3_t *s, int note)
@@ -56,6 +105,72 @@ static int note_freq(pt3_t *s, int note)
     if (note > 95)
         note = 95;
     return s->notes[note];
+}
+
+void pt3_fx_gliss(pt3_t *s, pt3_chan_t *c, uint8_t delay, int16_t step)
+{
+    c->slide_delay = delay;
+    c->slide_cnt = delay;
+    c->slide_step = step;
+    c->gliss = 1;
+    c->onoff = 0;
+    if (c->slide_cnt == 0 && s->version >= 7)
+        c->slide_cnt++;
+}
+
+/* Hacia la nota de la casilla, desde prev_note (la de antes de ella) y su
+ * deslizamiento. */
+void pt3_fx_porta(pt3_t *s, pt3_chan_t *c, uint8_t delay, int16_t step, int prev_note, int16_t prev_sliding)
+{
+    c->gliss = 0;
+    c->onoff = 0;
+    c->slide_delay = delay;
+    c->slide_cnt = delay;
+    if (step < 0)
+        step = (int16_t)-step;
+    c->delta = (int16_t)(note_freq(s, c->note) - note_freq(s, prev_note));
+    c->slide_to = c->note;
+    c->note = (uint8_t)prev_note;
+    if (s->version >= 6)
+        c->sliding = prev_sliding;
+    if (c->delta - c->sliding < 0)
+        step = (int16_t)-step;
+    c->slide_step = step;
+}
+
+void pt3_fx_onoff(pt3_chan_t *c, uint8_t on, uint8_t off)
+{
+    c->on_delay = on;
+    c->off_delay = off;
+    c->onoff = on;
+    c->slide_cnt = 0;
+    c->sliding = 0;
+}
+
+void pt3_fx_env_slide(pt3_t *s, uint8_t delay, int16_t add)
+{
+    s->env_delay = delay;
+    s->env_delay_cnt = delay;
+    s->env_slide_add = add;
+}
+
+/* --- El módulo PT3 -------------------------------------------------------------- */
+
+static void set_sample(pt3_t *s, pt3_chan_t *c, int n)
+{
+    pt3_sample_at(s, c, W(0x69 + (n & 31) * 2));
+}
+
+static void set_ornament(pt3_t *s, pt3_chan_t *c, int n)
+{
+    pt3_ornament_at(s, c, W(0xA9 + (n & 15) * 2));
+}
+
+static void set_position(pt3_t *s)
+{
+    uint16_t pat = W(0x67) + B(0xC9 + s->pos) * 2;     /* patrón × 3 × 2 bytes */
+    for (int i = 0; i < 3; i++)
+        s->ch[i].addr = W(pat + i * 2);
 }
 
 int pt3_init(pt3_t *s, const uint8_t *m, uint32_t n)
@@ -80,14 +195,7 @@ int pt3_init(pt3_t *s, const uint8_t *m, uint32_t n)
         p[i] = 0;
     s->m = m;
     s->n = n;
-    s->version = 6;
-    if (m[13] >= '0' && m[13] <= '9')
-        s->version = m[13] - '0';
-    int t = B(0x63) & 3;
-    int old = s->version <= 3;
-    static const uint8_t tab[2][4] = { { 1, 2, 4, 6 }, { 0, 2, 3, 5 } };
-    s->notes = pt3_notes[tab[old][t]];
-    s->vols = pt3_vols[s->version >= 5];
+    pt3_tables(s, m[13] >= '0' && m[13] <= '9' ? m[13] - '0' : 6, B(0x63));
     s->delay = B(0x64);
     s->npos = B(0x65);
     s->loop = B(0x66);
@@ -124,43 +232,17 @@ static void pattern(pt3_t *s, pt3_chan_t *c)
         } else if (v >= 0xC1) {
             c->volume = v - 0xC0;
         } else if (v == 0xC0) {
-            c->pos_smp = 0;
-            c->amp_slide = 0;
-            c->noise_slide = 0;
-            c->env_slide = 0;
-            c->pos_orn = 0;
-            c->slide_cnt = 0;
-            c->sliding = 0;
-            c->acc = 0;
-            c->onoff = 0;
-            c->enabled = 0;
+            pt3_rest(c);
             quit = 1;
         } else if (v >= 0xB2) {
-            c->env_on = 1;
-            s->r13 = v - 0xB1;
-            s->r13_write = 1;
-            s->env_base = B(a + 1) << 8 | B(a + 2);
+            pt3_env(s, c, v - 0xB1, (uint16_t)(B(a + 1) << 8 | B(a + 2)));
             a += 2;
-            c->pos_orn = 0;
-            s->env_slide = 0;
-            s->env_delay_cnt = 0;
         } else if (v == 0xB1) {
             c->skip = B(++a);
         } else if (v == 0xB0) {
-            c->env_on = 0;
-            c->pos_orn = 0;
+            pt3_env_off(c);
         } else if (v >= 0x50) {
-            c->note = v - 0x50;
-            c->pos_smp = 0;
-            c->amp_slide = 0;
-            c->noise_slide = 0;
-            c->env_slide = 0;
-            c->pos_orn = 0;
-            c->slide_cnt = 0;
-            c->sliding = 0;
-            c->acc = 0;
-            c->onoff = 0;
-            c->enabled = 1;
+            pt3_note(c, v - 0x50);
             quit = 1;
         } else if (v >= 0x40) {
             set_ornament(s, c, v - 0x40);
@@ -170,13 +252,8 @@ static void pattern(pt3_t *s, pt3_chan_t *c)
             if (v == 0x10) {
                 c->env_on = 0;
             } else {
-                s->r13 = v - 0x10;
-                s->r13_write = 1;
-                s->env_base = B(a + 1) << 8 | B(a + 2);
+                pt3_env(s, c, v - 0x10, (uint16_t)(B(a + 1) << 8 | B(a + 2)));
                 a += 2;
-                c->env_on = 1;
-                s->env_slide = 0;
-                s->env_delay_cnt = 0;
             }
             set_sample(s, c, B(++a) / 2);
             c->pos_orn = 0;
@@ -200,46 +277,20 @@ static void pattern(pt3_t *s, pt3_chan_t *c)
     /* Los parámetros de los efectos van tras la nota, del último al primero. */
     for (; cnt > 0; cnt--) {
         if (cnt == f1) {                        /* glissando */
-            c->slide_delay = B(a);
-            c->slide_cnt = c->slide_delay;
-            c->slide_step = (int16_t)W(a + 1);
+            pt3_fx_gliss(s, c, B(a), (int16_t)W(a + 1));
             a += 3;
-            c->gliss = 1;
-            c->onoff = 0;
-            if (c->slide_cnt == 0 && s->version >= 7)
-                c->slide_cnt++;
         } else if (cnt == f2) {                 /* portamento */
-            c->gliss = 0;
-            c->onoff = 0;
-            c->slide_delay = B(a);
-            c->slide_cnt = c->slide_delay;
-            int16_t step = (int16_t)W(a + 3);
+            pt3_fx_porta(s, c, B(a), (int16_t)W(a + 3), prev_note, prev_sliding);
             a += 5;
-            if (step < 0)
-                step = -step;
-            c->delta = note_freq(s, c->note) - note_freq(s, prev_note);
-            c->slide_to = c->note;
-            c->note = prev_note;
-            if (s->version >= 6)
-                c->sliding = prev_sliding;
-            if (c->delta - c->sliding < 0)
-                step = -step;
-            c->slide_step = step;
         } else if (cnt == f3) {                 /* posición en la muestra */
             c->pos_smp = B(a++);
         } else if (cnt == f4) {                 /* posición en el ornamento */
             c->pos_orn = B(a++);
         } else if (cnt == f5) {                 /* vibrato: encendido y apagado */
-            c->on_delay = B(a);
-            c->off_delay = B(a + 1);
+            pt3_fx_onoff(c, B(a), B(a + 1));
             a += 2;
-            c->onoff = c->on_delay;
-            c->slide_cnt = 0;
-            c->sliding = 0;
         } else if (cnt == f8) {                 /* desliza la envolvente */
-            s->env_delay = B(a);
-            s->env_delay_cnt = s->env_delay;
-            s->env_slide_add = (int16_t)W(a + 1);
+            pt3_fx_env_slide(s, B(a), (int16_t)W(a + 1));
             a += 3;
         } else if (cnt == f9) {                 /* tempo */
             s->delay = B(a++);
@@ -249,6 +300,8 @@ static void pattern(pt3_t *s, pt3_chan_t *c)
     c->skip_cnt = c->skip;
 }
 
+/* --- Cada paso ---------------------------------------------------------------- */
+
 /* Un canal en este paso: su tono, su volumen y lo que pone en el mezclador,
  * el ruido y la envolvente. */
 static void channel(pt3_t *s, pt3_chan_t *c, uint8_t *mixer)
@@ -257,7 +310,7 @@ static void channel(pt3_t *s, pt3_chan_t *c, uint8_t *mixer)
         /* Una posición fuera de la muestra (al cambiarla por una más corta
          * con la nota sonando, o con el efecto 3) es una línea en silencio,
          * sin tono, ruido ni envolvente, como en zxtune. */
-        uint16_t l = c->smp + c->pos_smp * 4;
+        uint32_t l = c->smp + c->pos_smp * 4u;
         int in = c->pos_smp < c->smp_len;
         uint8_t b0 = in ? B(l) : 0x01, b1 = in ? B(l + 1) : 0x90;
         c->ton = (in ? W(l + 2) : 0) + c->acc;
@@ -318,6 +371,31 @@ static void channel(pt3_t *s, pt3_chan_t *c, uint8_t *mixer)
     }
 }
 
+void pt3_tick(pt3_t *s, mus_ay_t *ay)
+{
+    uint8_t mixer = 0;
+    s->add_env = 0;
+    for (int i = 0; i < 3; i++)
+        channel(s, &s->ch[i], &mixer);
+
+    for (int i = 0; i < 3; i++) {
+        ay->r[i * 2] = s->ch[i].ton & 0xFF;
+        ay->r[i * 2 + 1] = s->ch[i].ton >> 8;
+        ay->r[8 + i] = s->ch[i].amp;
+    }
+    ay->r[6] = (s->noise_base + s->add_noise) & 31;
+    ay->r[7] = mixer;
+    uint16_t env = s->env_base + s->add_env + s->env_slide;
+    ay->r[11] = env & 0xFF;
+    ay->r[12] = env >> 8;
+    ay->r[13] = s->r13;
+    ay->r13 = s->r13_write;
+    if (s->env_delay_cnt > 0 && --s->env_delay_cnt == 0) {
+        s->env_delay_cnt = s->env_delay;
+        s->env_slide += s->env_slide_add;
+    }
+}
+
 void pt3_step(pt3_t *s, mus_ay_t *ay)
 {
     s->r13_write = 0;
@@ -340,28 +418,7 @@ void pt3_step(pt3_t *s, mus_ay_t *ay)
             pattern(s, &c[2]);
         s->delay_cnt = s->delay;
     }
-
-    uint8_t mixer = 0;
-    s->add_env = 0;
-    for (int i = 0; i < 3; i++)
-        channel(s, &s->ch[i], &mixer);
-
-    for (int i = 0; i < 3; i++) {
-        ay->r[i * 2] = s->ch[i].ton & 0xFF;
-        ay->r[i * 2 + 1] = s->ch[i].ton >> 8;
-        ay->r[8 + i] = s->ch[i].amp;
-    }
-    ay->r[6] = (s->noise_base + s->add_noise) & 31;
-    ay->r[7] = mixer;
-    uint16_t env = s->env_base + s->add_env + s->env_slide;
-    ay->r[11] = env & 0xFF;
-    ay->r[12] = env >> 8;
-    ay->r[13] = s->r13;
-    ay->r13 = s->r13_write;
-    if (s->env_delay_cnt > 0 && --s->env_delay_cnt == 0) {
-        s->env_delay_cnt = s->env_delay;
-        s->env_slide += s->env_slide_add;
-    }
+    pt3_tick(s, ay);
 }
 
 int pt3_ts_split(const uint8_t *m, uint32_t n, uint32_t *n1, uint32_t *n2)

@@ -42,6 +42,8 @@
 #define ZXV_MUSIC_PT2       4   /* Pro Tracker 2 */
 #define ZXV_MUSIC_STC       5   /* Sound Tracker 1.x, compilado */
 #define ZXV_MUSIC_ASC       6   /* ASC Sound Master 0.x y 1.x */
+#define ZXV_MUSIC_ZXM       7   /* el propio de ZX-V (.zxm): los dos AY y los canales de muestras */
+#define ZXV_MUSIC_VGM       8   /* VGM (o .vgz): los AY (uno o dos) */
 
 /* Opciones de zxv_music_play. */
 #define ZXV_MUSIC_LOOP      1   /* al acabar, sigue por su posición de vuelta */
@@ -64,6 +66,24 @@ int zxv_music_info(const void *data, uint32_t size, zxv_music_info_t *info);
  * ZXV_MUSIC_NONE y no toca nada. */
 int zxv_music_play(const void *data, uint32_t size, int flags);
 void zxv_music_stop(void);
+/* Dónde pone zxv_music_play las muestras de un .zxm: en la memoria de sonido
+ * desde base, y en la tabla de muestras desde la entrada slot (por defecto,
+ * 0 y 0). Las del programa, detrás. */
+void zxv_music_samples(uint32_t base, int slot);
+/* Para un .vgz, 32 KB de trabajo (la ventana con lo que se descomprime,
+ * mientras suena): sin ellos, un .vgz no suena. */
+void zxv_music_work(void *buf);
+/* Una muestra como efecto, a la vez que la canción (D99): en el canal ch
+ * (0-11), la entrada slot de la tabla, con su paso (zxv_smp_step), volumen
+ * (0-64) y panorama (0-255), durante dur_us (0: hasta zxv_music_smp_fx_stop;
+ * una muestra con bucle). Con la canción en marcha va a su paso, con su
+ * mismo adelanto; si el canal es de la canción, la tapa mientras suena y
+ * luego la canción sigue en él en su siguiente nota. */
+void zxv_music_smp_fx(int ch, int slot, uint32_t step, int vol, int pan, uint32_t dur_us);
+void zxv_music_smp_fx_stop(int ch);
+/* Los canales de muestras de la canción que suena (los primeros): 0 si no
+ * suena un .zxm. Los efectos, en los de arriba. */
+int zxv_music_smp_tracks(void);
 void zxv_music_pause(int on);
 /* 1 mientras suena (sin ZXV_MUSIC_LOOP, hasta el final). */
 int zxv_music_playing(void);

@@ -32,4 +32,10 @@ SECTIONS
      * final de la RAM de usuario, que son para la pila. */
     __heap_start = ALIGN(__bss_end, 8);
     __heap_end = ORIGIN(URAM) + LENGTH(URAM) - 0x8000;
+    /* La pila del programa sigue a la de la ROM, que al lanzarlo usa unos
+     * 1,2 KB, y el cargador pide 4 KB libres por debajo (STACK_RESERVE en
+     * rom/src/files.c): lo que pase de aquí lo rechaza ("No cabe en
+     * memoria"). */
+    ASSERT(__bss_end <= ORIGIN(URAM) + LENGTH(URAM) - 0x1800,
+           "el programa no cabe: la imagen y el BSS, 6 KB por debajo del final de la RAM de usuario (la pila)")
 }

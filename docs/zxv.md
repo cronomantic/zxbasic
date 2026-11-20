@@ -215,8 +215,9 @@ with the same names and arguments (see its manual):
 | `GRAB n, x, y, w, h[, t]`, `GRABSTR n, w, a$`, `SPRITE n, x, y[, f[, c$[, w, h]]]`, `HIT(a, ax, ay, b, bx, by)` | Sprites from the screen or from a string of hex digits, drawn mirrored, with other colours or scaled, and pixel-exact collisions |
 | `BOX c, x, y, w, h`, `DISC c, x, y, r`, `POLY c, x1, y1, ...`, `CLIP [x, y, w, h]`, `PIXEL(x, y)` | Filled shapes, clipping, and the colour of any pixel |
 | `KEY(n)`, `JOY(n)`, `SOUND r, v`, `TIME` | Keys held down, joysticks, the registers of the two AY chips, and the frame counter |
-| `MUSICLOAD f$`, `MUSICPLAY`, `MUSICSTOP`, `MUSICPAUSE`, `MUSICCONTINUE`, `MUSIC` | Music made with a tracker (a PT3 module from `zxv-tracker` or Vortex Tracker, a TurboSound, PT2, STC, ASC or PSG), in the background while the program goes on |
+| `MUSICLOAD f$`, `MUSICPLAY`, `MUSICSTOP`, `MUSICPAUSE`, `MUSICCONTINUE`, `MUSIC` | Music, in the background while the program goes on: ZX-V's own `.zxm` (the AY chips and the sample channels), a tracker module (a PT3 from `zxv-tracker` or Vortex Tracker, a TurboSound, PT2, STC, ASC or PSG) or a VGM of AY chips (`.vgm`, or compressed: `.vgz`) |
 | `SFXLOAD f$`, `SFX n[, c]`, `SFXSTOP`, `SFXPLAYING` | Sound effects of an AYFX bank (`.afb`) or a single one (`.afx`), on a free channel or on channel `c` (0-5) |
+| `SAMPLELOAD f$, n`, `SAMPLE n[, tone, vol, pan, c]`, `SAMPLESTOP [c]`, `SAMPLEPLAYING` | Recorded sounds (WAV) on the sample channels: sound `n` (0-31), `tone` semitones up or down, volume 0-64, pan 0-255, on a free channel or on channel `c` (0-11) |
 
 They draw with the graphics engine of the ROM, on the drawing page (`SCREEN`), in
 pixels from its top left corner with the y downwards; colours are 0-15 and 8 is
@@ -228,14 +229,22 @@ w, a$` there), `KEY`, `JOY`, `HIT` and `PIXEL` need parentheses, `REMAP` and `SO
 take one pair at a time and `PALETTE` one colour, `REMAP` and `PALETTE` only
 change table 0 (no `#t`), `REMAPRESET` and `PALETTERESET` are `REMAP` and
 `PALETTE` alone, `POLY` up to 8 points, `SCREEN` can not be used with
-`screen.bas`, and the music and effects are `MUSICLOAD f$` and `SFXLOAD f$`
+`screen.bas`, the music and effects are `MUSICLOAD f$` and `SFXLOAD f$`
 (`LOAD f$ MUSIC` and `SFX` there), `MUSICPLAY`, `MUSICSTOP`... and `SFXPLAYING`
-(the function `SFX` there).
+(the function `SFX` there), and the recorded sounds `SAMPLELOAD f$, n` (`LOAD f$
+SAMPLE n` there), `SAMPLE n, tone, vol, pan, c` (`; c` there), `SAMPLESTOP` and
+`SAMPLEPLAYING` (the function `SAMPLE` there). `MUSICLOAD` does not take MOD,
+S3M or XM modules, which ZX-V's BASIC converts while loading: so as not to
+carry the converter in every program, `zxv-music` turns them into a `.zxm`
+first (`zxv-music song.xm song.zxm`).
 
 The music and the effects play with the music library of the ZX-V SDK
 (`sdk/music`, the same code as in the ROM and in `zxv-tracker`), from the frame
 hook: the program goes on while they play, until `MUSICSTOP` or the end of the
-program. The module and the bank go in the heap. While something plays, `BEEP`
+program. The module and the bank go in the heap; a `.vgz` takes 32 KB more of
+it, to decompress it while it plays. The samples of a `.zxm` go to the sound
+memory from the bottom and those of `SAMPLELOAD` from the top, as in ZX-V's
+BASIC (nothing of a WAV stays in the RAM). While something plays, `BEEP`
 goes as far ahead as the music (35 ms), with the `beeper_event_at` function of
 the ZX-V API (55, in the ROMs after ZX-V 0.5.0; in older ones `BEEP` is silent
 while the music plays), so the timed queue keeps its order.

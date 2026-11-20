@@ -46,6 +46,77 @@ static inline void zxv_beeper_event(int level) { ZXV_API_FN(ZXV_API_BEEPER_EVENT
 static inline void zxv_ay_event(uint32_t t_us, int reg, int val) { ZXV_API_FN(ZXV_API_AY_EVENT, void (*)(uint32_t, int, int))(t_us, reg, val); }
 static inline void zxv_beeper_event_at(uint32_t t_us, int level) { ZXV_API_FN(ZXV_API_BEEPER_EVENT_AT, void (*)(uint32_t, int))(t_us, level); }
 
+/* --- Los canales de muestras (spec §5.6) ---------------------------------- */
+
+/* Un registro de un canal (ZXV_SMP_SLOT...): por la cola del AY, en orden con
+ * las escrituras de los AY. Con zxv_ay_event(t_us, ZXV_SMP_REG(ch, reg), val),
+ * a su hora. */
+static inline void zxv_smp_write(int ch, int reg, int val) { zxv_ay_write((int)ZXV_SMP_REG(ch, reg), val); }
+
+/* El paso para una muestra grabada a sample_hz (que suene a su altura). */
+static inline uint32_t zxv_smp_step(uint32_t sample_hz) { return (uint32_t)(((uint64_t)sample_hz << 16) / 48000u); }
+
+/* Sube len bytes (múltiplo de 4) de src a la memoria de sonido, desde dst, y
+ * espera a que acabe (unas pocas imágenes): ZXV_OK, o ZXV_E_RANGE si no cabe
+ * o src no es de la RAM del programa. */
+static inline int zxv_smp_upload(uint32_t dst, const void *src, uint32_t len)
+{
+    volatile uint8_t *ctl = (volatile uint8_t *)(uintptr_t)ZXV_S_SMP_UPLOAD;
+    while (*ctl == 1)
+        zxv_wait_vblank();
+    *(volatile uint32_t *)(uintptr_t)ZXV_S_SMP_SRC = (uint32_t)(uintptr_t)src;
+    *(volatile uint32_t *)(uintptr_t)ZXV_S_SMP_DST = dst;
+    *(volatile uint32_t *)(uintptr_t)ZXV_S_SMP_LEN = len;
+    __asm__ volatile("fence w, w" ::: "memory");
+    *ctl = 1;
+    while (*ctl == 1)
+        zxv_wait_vblank();
+    return *ctl ? ZXV_E_RANGE : ZXV_OK;
+}
+
+/* La entrada slot de la tabla de muestras: dónde empieza (addr, en la memoria
+ * de sonido), su formato (ZXV_SMP_PCM8 o ZXV_SMP_ADPCM), cuántas muestras tiene
+ * y desde cuál vuelve a empezar el bucle (len o más: sin bucle). */
+static inline int zxv_smp_define(int slot, uint32_t addr, int fmt, uint32_t len, uint32_t loop)
+{
+    uint32_t e[3] = { addr | (uint32_t)fmt << 24, len, loop };
+    return zxv_smp_upload(ZXV_SMP_TABLE + (uint32_t)slot * ZXV_SMP_SLOT_SIZE, e, sizeof e);
+}
+
+/* Deja la muestra slot lista en el canal ch, sin arrancarla: con su paso
+ * (zxv_smp_step), volumen (0-64) y panorama (0-255; 128 el centro), desde el
+ * principio. La arranca zxv_smp_start. */
+static inline void zxv_smp_prepare(int ch, int slot, uint32_t step, int vol, int pan)
+{
+    zxv_smp_write(ch, ZXV_SMP_SLOT, slot);
+    zxv_smp_write(ch, ZXV_SMP_VOL, vol);
+    zxv_smp_write(ch, ZXV_SMP_PAN, pan);
+    zxv_smp_write(ch, ZXV_SMP_STEP, (int)(step & 0xFF));
+    zxv_smp_write(ch, ZXV_SMP_STEP + 1, (int)(step >> 8 & 0xFF));
+    zxv_smp_write(ch, ZXV_SMP_STEP + 2, (int)(step >> 16 & 0xFF));
+    zxv_smp_write(ch, ZXV_SMP_OFFSET, 0);
+}
+
+/* Arranca a la vez, en la misma muestra, los canales de mask (el bit n, el
+ * canal n): como ZXV_SMP_KEY en cada uno, pero sin que se separen, por
+ * muchas escrituras que hiciera falta antes (los acordes, las filas de un
+ * MOD). */
+static inline void zxv_smp_start(uint32_t mask)
+{
+    if (mask >> 8 & 0x0F)
+        zxv_ay_write((int)ZXV_SMP_KEYON_HI, (int)(mask >> 8 & 0x0F));
+    zxv_ay_write((int)ZXV_SMP_KEYON, (int)(mask & 0xFF));
+}
+
+/* Toca la muestra slot en el canal ch, ya (zxv_smp_prepare y su KEY). */
+static inline void zxv_smp_play(int ch, int slot, uint32_t step, int vol, int pan)
+{
+    zxv_smp_prepare(ch, slot, step, vol, pan);
+    zxv_smp_write(ch, ZXV_SMP_CTRL, ZXV_SMP_KEY);
+}
+
+static inline void zxv_smp_stop(int ch) { zxv_smp_write(ch, ZXV_SMP_CTRL, ZXV_SMP_STOP); }
+
 static inline int zxv_file_open(const char *name, uint32_t flags) { return ZXV_API_FN(ZXV_API_FILE_OPEN, int (*)(const char *, uint32_t))(name, flags); }
 static inline int zxv_file_read(int f, void *buf, uint32_t n) { return ZXV_API_FN(ZXV_API_FILE_READ, int (*)(int, void *, uint32_t))(f, buf, n); }
 static inline int zxv_file_write(int f, const void *buf, uint32_t n) { return ZXV_API_FN(ZXV_API_FILE_WRITE, int (*)(int, const void *, uint32_t))(f, buf, n); }

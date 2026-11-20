@@ -15,8 +15,11 @@
 #define ZXV_FLASH_SIZE          0x00400000u     /* 4 MB (Pico 2) */
 #define ZXV_PLATFORM_BASE       0x10000000u     /* firmware de plataforma */
 #define ZXV_ROM_BASE            0x10040000u     /* ROM ZX-V */
-#define ZXV_ROMDISK_BASE        0x100C0000u     /* disco ROM (la unidad ROM:), hasta el final */
 #define ZXV_ROM_SIZE            0x00080000u
+/* El disco ROM (la unidad ROM:), en su propia partición de la flash (D96),
+ * que el firmware ve aquí: fuera de las dos copias del firmware y la ROM. */
+#define ZXV_ROMDISK_BASE        0x10400000u
+#define ZXV_ROMDISK_SIZE        0x0027B000u     /* 2.540 KB */
 
 #define ZXV_SRAM_BASE           0x20000000u
 #define ZXV_SRAM_SIZE           0x00082000u     /* 520 KB */
@@ -49,7 +52,7 @@
  * palabra solo uno de los dos. Desplazamientos desde ZXV_DBG_BOX. */
 #define ZXV_DBG_SIZE            0x300u
 #define ZXV_DBG_MAGIC_VALUE     0x4456585Au     /* "ZXVD" */
-#define ZXV_DBG_VERSION_VALUE   1u
+#define ZXV_DBG_VERSION_VALUE   2u
 #define ZXV_DBG_MAGIC           0x00u   /* u32, ROM: ZXV_DBG_MAGIC_VALUE */
 #define ZXV_DBG_VERSION         0x04u   /* u32, ROM */
 #define ZXV_DBG_CTRL            0x08u   /* u32, anfitrión: ZXV_DBGC_... */
@@ -94,6 +97,7 @@
 #define ZXV_DBGO_VARS           6u      /* argumento: desde qué variable */
 #define ZXV_DBGO_STACK          7u      /* argumento: desde qué marco */
 #define ZXV_DBGO_ARRAY          8u      /* TEXT: el nombre; argumento: desde qué elemento */
+#define ZXV_DBGO_LIST           9u      /* argumento: desde qué línea (v2; también sin programa) */
 
 /* --- Registros de vídeo (spec §4.5) ------------------------------------- */
 #define ZXV_V_MODE              (ZXV_VIDEO_REGS + 0x00u)   /* u8  */
@@ -210,6 +214,42 @@
  * cola del AY). */
 #define ZXV_EV_AY               0x80000000u
 #define ZXV_EV_AY_WRITE(reg, val) (ZXV_EV_AY | ((uint32_t)(reg) & 0xFFu) << 8 | ((uint32_t)(val) & 0xFFu))
+
+/* --- Los canales de muestras (spec §5.6) -------------------------------- */
+/* Doce canales que reproducen muestras de la memoria de sonido (96 KB de
+ * muestras y la tabla de muestras), en la ULA. Sus registros se escriben por
+ * las colas del AY (como si fueran del AY, con estos números) y se leen en
+ * SMP_REGS. */
+#define ZXV_S_SMP_VOLUME        (ZXV_SOUND_REGS + 0x0Cu)   /* u8, el volumen de los canales */
+#define ZXV_S_SMP_REGS          (ZXV_SOUND_REGS + 0x40u)   /* 96 x u8, solo lectura */
+#define ZXV_S_SMP_SRC           (ZXV_SOUND_REGS + 0xA0u)   /* u32: subir a la memoria de sonido desde aquí... */
+#define ZXV_S_SMP_DST           (ZXV_SOUND_REGS + 0xA4u)   /* u32: ... a aquí... */
+#define ZXV_S_SMP_LEN           (ZXV_SOUND_REGS + 0xA8u)   /* u32: ... tantos bytes (múltiplo de 4) */
+#define ZXV_S_SMP_UPLOAD        (ZXV_SOUND_REGS + 0xACu)   /* u8: 1 la empieza; el sistema lo pone a 0 al acabar */
+#define ZXV_SMP_CHANNELS        12
+#define ZXV_SMP_KEYON_HI        36u     /* para las colas: los canales 8-11 (bits 0-3) del ZXV_SMP_KEYON siguiente */
+#define ZXV_SMP_KEYON           37u     /* para las colas: arranca a la vez los canales 0-7 (bits 0-7) y los de KEYON_HI */
+#define ZXV_SMP_REG(ch, f)      (64u + 8u * (uint32_t)(ch) + (uint32_t)(f))   /* el número para las colas */
+#define ZXV_SMP_SLOT            0       /* la muestra (0-255) */
+#define ZXV_SMP_VOL             1       /* volumen, 0-64 */
+#define ZXV_SMP_PAN             2       /* panorama: 0 izquierda, 128 centro, 255 derecha */
+#define ZXV_SMP_CTRL            3       /* ZXV_SMP_KEY... */
+#define ZXV_SMP_STEP            4       /* 3 bytes (u24, 8.16): el paso por muestra de 48 kHz */
+#define ZXV_SMP_OFFSET          7       /* desde dónde, de 256 en 256 muestras; en modo directo, lo que suena (i8) */
+#define ZXV_SMP_KEY             0x01u   /* CTRL: dispara la muestra */
+#define ZXV_SMP_STOP            0x02u   /* CTRL: la para */
+#define ZXV_SMP_NOINTERP        0x04u   /* CTRL: sin interpolar */
+#define ZXV_SMP_DIRECT          0x08u   /* CTRL: modo directo (el DAC) */
+#define ZXV_SMP_MEM             0x18000u    /* bytes de muestras */
+#define ZXV_SMP_TABLE           ZXV_SMP_MEM /* la tabla de muestras, detrás */
+#define ZXV_SMP_SLOTS           256
+#define ZXV_SMP_SLOT_SIZE       12
+#define ZXV_SMP_SOUND_MEM       (ZXV_SMP_MEM + ZXV_SMP_SLOTS * ZXV_SMP_SLOT_SIZE)
+#define ZXV_SMP_PCM8            0       /* formato: 8 bits con signo */
+#define ZXV_SMP_ADPCM           1       /* formato: ADPCM IMA en bloques (spec §5.6) */
+#define ZXV_SMP_ADPCM_BLOCK     64
+#define ZXV_SMP_ADPCM_BYTES     36
+#define ZXV_SMP_ADPCM_MAX_STEP  0x20000u
 #define ZXV_AY_STEREO_MONO      0
 #define ZXV_AY_STEREO_ABC       1
 #define ZXV_AY_STEREO_ACB       2
@@ -225,6 +265,11 @@
 #define ZXV_SV_SYSFLAGS         (ZXV_SYSVARS + 0x1Cu)
 #define ZXV_SV_LANG             (ZXV_SYSVARS + 0x20u)   /* u32: ZXV_LANG('e','s') */
 #define ZXV_SV_EDITOR           (ZXV_SYSVARS + 0x24u)   /* u32: 1 = el BASIC espera una orden */
+#define ZXV_SV_PREFS            (ZXV_SYSVARS + 0x28u)   /* u32: las preferencias (ZXV_PREF_...) */
+
+/* Las preferencias de la máquina, que guarda la plataforma (spec §7.11). */
+#define ZXV_PREF_NO_CLICK       0x01u   /* las teclas del editor, sin clic */
+#define ZXV_PREFS_MASK          0x0Fu   /* los bits que hay (los demás, a 0) */
 
 /* El idioma de la máquina: su código ISO 639-1, dos letras minúsculas. */
 #define ZXV_LANG(a, b)          ((uint32_t)(a) | (uint32_t)(b) << 8)
@@ -263,6 +308,29 @@
 #define ZXV_PIF_LANG_GET        (ZXV_PLATFORM_IF + 0x4Cu)
 #define ZXV_PIF_LANG_SET        (ZXV_PLATFORM_IF + 0x50u)
 #define ZXV_PIF_VERSION_LANG    4u
+/* Versión 5: las preferencias, que la plataforma guarda (u32 prefs_get(void),
+ * que da 0 si no sabe ninguna; void prefs_set(u32)). */
+#define ZXV_PIF_PREFS_GET       (ZXV_PLATFORM_IF + 0x54u)
+#define ZXV_PIF_PREFS_SET       (ZXV_PLATFORM_IF + 0x58u)
+#define ZXV_PIF_VERSION_PREFS   5u
+/* Versión 6: actualizar el firmware de las dos Pico desde la tarjeta (spec
+ * §7.12, D96). int update_info(void *info) mira ZXV_UPDATE_FILE en la
+ * carpeta raíz de la tarjeta y deja en info (ZXV_UPDATE_INFO_SIZE bytes) las
+ * versiones: la del fichero, la de la CPU y la de la ULA, cadenas de hasta
+ * 15 caracteres con su 0 ("" si no se sabe). Da 0 si se puede actualizar o
+ * un error: ZXV_E_NOCARD, ZXV_E_NOENT (no está el fichero), ZXV_E_FORMAT (no
+ * es una actualización de ZX-V) o ZXV_E_ACCESS (la flash de la CPU no tiene
+ * particiones: hay que grabarla por USB una vez). int update_start(void)
+ * reinicia las dos Pico en el modo de actualización; si vuelve, con el
+ * error. */
+#define ZXV_PIF_UPDATE_INFO     (ZXV_PLATFORM_IF + 0x5Cu)
+#define ZXV_PIF_UPDATE_START    (ZXV_PLATFORM_IF + 0x60u)
+#define ZXV_PIF_VERSION_UPDATE  6u
+#define ZXV_UPDATE_FILE         "zxv-update.bin"
+#define ZXV_UPDATE_INFO_SIZE    48
+#define ZXV_UI_FILE             0       /* la versión del fichero */
+#define ZXV_UI_CPU              16      /* la de la Pico CPU */
+#define ZXV_UI_ULA              32      /* la de la Pico ULA */
 
 /* --- Números de la API (spec §7.3) -------------------------------------- */
 #define ZXV_API_VERSION         0
