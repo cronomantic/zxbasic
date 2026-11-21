@@ -82,7 +82,8 @@ static const char *block_ext(uint32_t start, uint32_t len) { return is_screen(st
 
 static void file_error(int e)
 {
-    zxb_fail(e == ZXV_E_NOENT ? "T File not found" : e == ZXV_E_NOCARD ? "U No SD card" : "V Disk error");
+    zxb_fail(e == ZXV_E_NOENT ? "T File not found" : e == ZXV_E_NOCARD ? "U No SD card" :
+             e == ZXV_E_OFFLINE ? "V Disk error (no server for EXT:)" : "V Disk error");
 }
 
 static void check(int r, int f)

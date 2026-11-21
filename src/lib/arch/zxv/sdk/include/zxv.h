@@ -444,6 +444,7 @@
 #define ZXV_E_RANGE             (-15)   /* no cabe en la memoria de usuario */
 #define ZXV_E_NOCLOCK           (-16)   /* el reloj no está en hora */
 #define ZXV_E_INVAL             (-17)   /* valor no válido (una fecha que no existe) */
+#define ZXV_E_OFFLINE           (-18)   /* la unidad EXT: no tiene servidor */
 
 /* --- Ejecutables .ZXV (spec §9.2) ---------------------------------------- */
 #define ZXV_HDR_SIZE            72

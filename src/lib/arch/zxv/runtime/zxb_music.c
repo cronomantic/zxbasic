@@ -137,7 +137,8 @@ static int open_file(const char *name)
 {
     int f = zxb_rd_open(name);
     if (f < 0)
-        zxb_fail(f == ZXV_E_NOENT ? "T File not found" : f == ZXV_E_NOCARD ? "U No SD card" : "V Disk error");
+        zxb_fail(f == ZXV_E_NOENT ? "T File not found" : f == ZXV_E_NOCARD ? "U No SD card" :
+                 f == ZXV_E_OFFLINE ? "V Disk error (no server for EXT:)" : "V Disk error");
     return f;
 }
 

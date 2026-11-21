@@ -119,7 +119,10 @@ program starts, its colours go with it.
 `SAVE`, `LOAD` and `VERIFY` work on the SD card of ZX-V (or the emulator's card
 folder), as in its BASIC: a name without extension gets `.gfx` for the screen
 and `.bin` for the rest (`CODE` and `DATA`). `LOAD` without extension tries that
-one and then `.tap`.
+one and then `.tap`. The names can start with a drive, as in the ZX-V BASIC:
+`ROM:` (read only) and `EXT:`, the folder served by another computer over the
+board's UART, or by the emulator (`--ext`, File > EXT: drive). Without a server
+for `EXT:`, the program stops with `V Disk error (no server for EXT:)`.
 
 - `SCREEN$` in a `.gfx` is the ZX-V screen shown, as its BASIC saves it: a
   graphics file with a screen object (the mode, the border colour, the colours
