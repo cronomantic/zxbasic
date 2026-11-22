@@ -4,7 +4,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    URAM (rwx) : ORIGIN = 0x20034000, LENGTH = 0x3E000
+    URAM (rwx) : ORIGIN = 0x20034000, LENGTH = 0x3D000
 }
 
 SECTIONS

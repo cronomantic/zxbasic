@@ -11,7 +11,7 @@ screen (if any) and the contiguous image. From sdk/tools/elf2zxv.py of ZX-V (MIT
 import struct
 import zlib
 
-URAM_BASE, URAM_END = 0x20034000, 0x20072000
+URAM_BASE, URAM_END = 0x20034000, 0x20071000
 MAGIC = b"ZXV1"
 HDR_SIZE = 72
 PROFILE = 1

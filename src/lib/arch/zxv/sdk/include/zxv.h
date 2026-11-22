@@ -28,8 +28,8 @@
 #define ZXV_VRAM1_BASE          0x2001C000u
 #define ZXV_VRAM_PAGE_SIZE      0x00018000u     /* 96 KB */
 #define ZXV_URAM_BASE           0x20034000u     /* RAM de usuario */
-#define ZXV_URAM_END            0x20072000u     /* exclusivo */
-#define ZXV_RESERVED_BASE       0x20072000u     /* reservada (PMP) */
+#define ZXV_URAM_END            0x20071000u     /* exclusivo */
+#define ZXV_RESERVED_BASE       0x20071000u     /* reservada (PMP) */
 #define ZXV_RESERVED_END        0x20082000u
 
 /* --- Área de sistema (spec §3.2) ---------------------------------------- */
