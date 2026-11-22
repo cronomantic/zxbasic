@@ -10,6 +10,19 @@
     .section .text.start, "ax"
     .globl _start
 _start:
+    /* Si hay algo en la VRAM oculta, antes se espera a que acabe de enviarse
+     * la imagen de antes de empezar (la del BASIC o la pantalla de carga, que
+     * puede ser la página entera): se borra lo que se está enviando. */
+    la t0, __vram0_start
+    la t1, __vram1_end
+    la t2, __vram1_start
+    la t3, __vram0_end
+    bne t0, t3, 5f
+    beq t2, t1, 4f
+5:  li t2, 0x2000071C                   /* ZXV_SV_SYSFLAGS: ZXV_SYSF_LINK_BUSY (bit 0) */
+6:  lw t3, 0(t2)
+    andi t3, t3, 1
+    bnez t3, 6b
     la t0, __vram0_start
     la t1, __vram0_end
 1:  bgeu t0, t1, 2f

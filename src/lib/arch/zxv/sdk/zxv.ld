@@ -13,12 +13,14 @@ MEMORY
 
 SECTIONS
 {
+    /* Lo de los bancos de código (zxvbank_*.o, de tools/zxvbanks.py) no va en
+     * la parte residente, sino en sus zonas (ZXVBANKS, abajo). */
     .text : {
         KEEP(*(.text.start))
-        *(.text*)
+        *(EXCLUDE_FILE(*zxvbank_*.o) .text*)
     } > URAM
-    .rodata : { *(.rodata*) *(.srodata*) } > URAM
-    .data : { *(.data*) *(.sdata*) . = ALIGN(4); } > URAM
+    .rodata : { *(EXCLUDE_FILE(*zxvbank_*.o) .rodata*) *(EXCLUDE_FILE(*zxvbank_*.o) .srodata*) } > URAM
+    .data : { *(EXCLUDE_FILE(*zxvbank_*.o) .data*) *(EXCLUDE_FILE(*zxvbank_*.o) .sdata*) . = ALIGN(4); } > URAM
     /* Las variables de hilo (el errno de picolibc): crt0.S pone tp en
      * __tls_base. .tdata va en la imagen; .tbss, a cero con el BSS, en su
      * propio sitio (el enlazador no le reserva memoria). */
@@ -43,18 +45,23 @@ SECTIONS
     } > VRAM1X
     .bss (NOLOAD) : {
         __bss_start = .;
-        *(.bss*) *(.sbss*) *(COMMON)
+        *(EXCLUDE_FILE(*zxvbank_*.o) .bss*) *(EXCLUDE_FILE(*zxvbank_*.o) .sbss*)
+        *(EXCLUDE_FILE(*zxvbank_*.o) COMMON)
         . = ALIGN(4);
         __bss_end = .;
     } > URAM
+    /* Las zonas de los bancos de código (D109): tools/zxvbanks.py las pone
+     * aquí, detrás del BSS, y así cuentan en lo que ocupa el programa. */
+    /* ZXVBANKS */
+    __zxv_end = .;
     /* El montón de malloc (picolibc, ver zxvc.c): hasta 32 KB por debajo del
      * final de la RAM de usuario, que son para la pila. */
-    __heap_start = ALIGN(__bss_end, 8);
+    __heap_start = ALIGN(__zxv_end, 8);
     __heap_end = ORIGIN(URAM) + LENGTH(URAM) - 0x8000;
     /* La pila del programa sigue a la de la ROM, que al lanzarlo usa unos
      * 1,2 KB, y el cargador pide 4 KB libres por debajo (STACK_RESERVE en
      * rom/src/files.c): lo que pase de aquí lo rechaza ("No cabe en
      * memoria"). */
-    ASSERT(__bss_end <= ORIGIN(URAM) + LENGTH(URAM) - 0x1800,
-           "el programa no cabe: la imagen y el BSS, 6 KB por debajo del final de la RAM de usuario (la pila)")
+    ASSERT(__zxv_end <= ORIGIN(URAM) + LENGTH(URAM) - 0x1800,
+           "el programa no cabe: la imagen, el BSS y las zonas de los bancos, 6 KB por debajo del final de la RAM de usuario (la pila)")
 }
