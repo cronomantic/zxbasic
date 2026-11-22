@@ -11,6 +11,7 @@
 
 #define REG8(a)     (*(volatile uint8_t *)(uintptr_t)(a))
 #define REG16(a)    (*(volatile uint16_t *)(uintptr_t)(a))
+#define REG32(a)    (*(volatile uint32_t *)(uintptr_t)(a))
 
 #define ERR_INT_RANGE   10              /* B Integer out of range */
 #define ERR_COLOUR      19              /* K Invalid colour */
@@ -36,9 +37,25 @@ static void colour(int c)
         zxb_ERROR(ERR_COLOUR);
 }
 
+/* Spec 4.8: at each VBLANK the system takes the page shown and sends it to
+ * the screen, and while SYSFLAGS.LINK_BUSY is 1 (1.5 ms in mode 0, 6 at
+ * most in mode 1) that page must not be written. The Spectrum screen is
+ * drawn on the page shown (one buffer, as in the ZX-V BASIC), so before
+ * writing on it, wait for the end of the sending; on the other page
+ * (SCREEN 1 with PAGE 0, double buffer) there is nothing to wait for. A
+ * program that changes PAGE and draws at once on the page it has just
+ * hidden, without waiting for a VBLANK, is not covered. */
+void zxb_vram_wait(void)
+{
+    if (draw_page == (REG8(ZXV_V_PAGE) & 1))
+        while (REG32(ZXV_SV_SYSFLAGS) & ZXV_SYSF_LINK_BUSY)
+            ;
+}
+
 /* The engine draws on the drawing page, with the CLIP rectangle */
 static void begin(void)
 {
+    zxb_vram_wait();
     zxv_bitmap b = { page_pix(draw_page), (uint16_t)(width / 2), (uint16_t)width, (uint16_t)height, 0 };
     zxv_gfx_target(&b);
     if (clip_on)
@@ -57,6 +74,7 @@ static void select_page(int n)
 
 static void clear_page(int n)
 {
+    zxb_vram_wait();
     uint32_t c = (uint32_t)zxb_paper() * 0x11111111u;
     uint32_t *p = (uint32_t *)page_pix(n);
     for (uint32_t i = 0; i < ZXV_VRAM_PAGE_SIZE / 4; i++)

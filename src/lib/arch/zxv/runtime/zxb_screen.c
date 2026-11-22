@@ -57,6 +57,7 @@ static void paint_line(int c, int y)
     uint32_t m = expand[bitmap[y * COLS + c]];
     if ((a & 0x80) && flash_phase)
         m = ~m;
+    zxb_vram_wait();
     zxb_vram[y * zxb_wpl + c] = (ink & m) | (paper & ~m);
 }
 

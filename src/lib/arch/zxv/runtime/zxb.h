@@ -45,6 +45,9 @@ void zxb_report(const char *msg);       /* On the bottom line, as the Spectrum r
 void zxb_BORDER(int n);
 int zxb_paper(void);                    /* The PAPER colour, 0-15 */
 extern volatile uint32_t *zxb_vram;     /* The drawing page, where the Spectrum screen goes */
+/* Before writing on the drawing page: if it is the page shown, wait while
+ * the system is still sending it to the screen (spec 4.8, LINK_BUSY). */
+void zxb_vram_wait(void);
 extern int zxb_wpl;                     /* Its 32-bit words per line */
 uint32_t zxb_IN(uint32_t port);         /* The Spectrum ports: keyboard and Kempston */
 
