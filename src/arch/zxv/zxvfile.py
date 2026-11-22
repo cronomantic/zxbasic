@@ -12,6 +12,9 @@ import struct
 import zlib
 
 URAM_BASE, URAM_END = 0x20034000, 0x20071000
+# The hidden VRAM of each page in mode 0 (zxv.ld, ZX-V D108): what a program puts there starts
+# zeroed (crt0.S) and is not in the file.
+VRAM_HIDDEN = ((0x2000A000, 0x2001C000), (0x20022000, 0x20034000))
 MAGIC = b"ZXV1"
 HDR_SIZE = 72
 PROFILE = 1
@@ -42,6 +45,11 @@ def zxv_from_elf(elf: bytes, name: str, screen: bytes = b"") -> bytes:
     """The .zxv file of an ELF; name is the program's name (up to 27 characters) and screen the loading
     screen, the data of a .gfx screen object (src/arch/zxv/screen.py), or nothing"""
     entry, segs = load_segments(elf)
+    hidden = [s for s in segs if any(lo <= s[0] and s[0] + s[2] <= hi for lo, hi in VRAM_HIDDEN)]
+    for addr, content, _ in hidden:
+        if content:
+            raise ZxvError(f"data with an initial value in the hidden VRAM ({addr:#x}): it is not loaded")
+    segs = [s for s in segs if s not in hidden]
     if not segs:
         raise ZxvError("the ELF has no loadable segments")
 

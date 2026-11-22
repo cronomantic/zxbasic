@@ -5,6 +5,10 @@ ENTRY(_start)
 MEMORY
 {
     URAM (rwx) : ORIGIN = 0x20034000, LENGTH = 0x3D000
+    /* La VRAM oculta (spec §3.1, D108): en modo 0 y con VSIZE 0, cada página
+     * solo enseña sus primeros 24 KB; los 72 KB de detrás son del programa. */
+    VRAM0X (rw) : ORIGIN = 0x2000A000, LENGTH = 0x12000
+    VRAM1X (rw) : ORIGIN = 0x20022000, LENGTH = 0x12000
 }
 
 SECTIONS
@@ -22,6 +26,21 @@ SECTIONS
     __image_end = .;
     .tbss (NOLOAD) : { *(.tbss .tbss.*) *(.tcommon) } > URAM
     .tbss_space (NOLOAD) : { . = . + SIZEOF(.tbss); . = ALIGN(4); } > URAM
+    /* Lo declarado con ZXV_VRAM0_DATA y ZXV_VRAM1_DATA (zxv.h): antes que
+     * .bss, que si no se lo quedaría (.bss.*). No va en el fichero: crt0.S
+     * lo pone a cero al empezar. */
+    .zxv_vram0 (NOLOAD) : {
+        __vram0_start = .;
+        *(.bss.zxv_vram0 .bss.zxv_vram0.*)
+        . = ALIGN(4);
+        __vram0_end = .;
+    } > VRAM0X
+    .zxv_vram1 (NOLOAD) : {
+        __vram1_start = .;
+        *(.bss.zxv_vram1 .bss.zxv_vram1.*)
+        . = ALIGN(4);
+        __vram1_end = .;
+    } > VRAM1X
     .bss (NOLOAD) : {
         __bss_start = .;
         *(.bss*) *(.sbss*) *(COMMON)

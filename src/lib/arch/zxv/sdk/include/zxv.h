@@ -27,6 +27,19 @@
 #define ZXV_VRAM0_BASE          0x20004000u
 #define ZXV_VRAM1_BASE          0x2001C000u
 #define ZXV_VRAM_PAGE_SIZE      0x00018000u     /* 96 KB */
+/* La VRAM oculta (D108): en modo 0 y con VSIZE 0, cada página enseña solo sus
+ * primeros 24 KB y los 72 KB de detrás son RAM del programa. Para tablas y
+ * bancos grandes, sin gastar RAM de usuario:
+ *
+ *   ZXV_VRAM0_DATA static uint8_t alturas[18 * 1024];
+ *
+ * Empiezan a cero (crt0.S) y no pueden tener otro valor inicial (no van en
+ * el fichero: GCC lo rechaza). Se pierden si el programa pasa al modo 1 o
+ * usa el campo de juego virtual, que ocupan la página entera. */
+#define ZXV_VRAM_HIDDEN         0x00006000u     /* desde aquí, en cada página */
+#define ZXV_VRAM_HIDDEN_SIZE    0x00012000u     /* 72 KB */
+#define ZXV_VRAM0_DATA          __attribute__((section(".bss.zxv_vram0")))
+#define ZXV_VRAM1_DATA          __attribute__((section(".bss.zxv_vram1")))
 #define ZXV_URAM_BASE           0x20034000u     /* RAM de usuario */
 #define ZXV_URAM_END            0x20071000u     /* exclusivo */
 #define ZXV_RESERVED_BASE       0x20071000u     /* reservada (PMP) */
@@ -331,6 +344,50 @@
 #define ZXV_UI_FILE             0       /* la versión del fichero */
 #define ZXV_UI_CPU              16      /* la de la Pico CPU */
 #define ZXV_UI_ULA              32      /* la de la Pico ULA */
+/* Versión 7: el Wi-Fi de una Pico 2 W como CPU (D106), para el cuadro Wi-Fi
+ * del menú EDIT. Una sola función, int wifi(int op, void *buf): ZXV_WIFI_*.
+ * Sin radio (una Pico 2), INFO dice ZXV_WS_NONE y lo demás da
+ * ZXV_E_ACCESS. */
+#define ZXV_PIF_WIFI            (ZXV_PLATFORM_IF + 0x64u)
+#define ZXV_PIF_VERSION_WIFI    7u
+#define ZXV_WIFI_INFO           0       /* buf: ZXV_WIFI_INFO_SIZE bytes, abajo */
+#define ZXV_WIFI_SCAN           1       /* empieza a buscar redes (unos segundos: INFO dice cuándo acaba) */
+#define ZXV_WIFI_LIST           2       /* buf: ZXV_WIFI_LIST_SIZE; da cuántas redes */
+#define ZXV_WIFI_JOIN           3       /* buf: la red y la contraseña, cada una con su 0: se guarda y se conecta */
+#define ZXV_WIFI_OFF            4       /* olvida la red y se desconecta */
+#define ZXV_WIFI_PAIR           5       /* buf[0]: ZXV_WP_CLOSE, OPEN, ACCEPT o REJECT; da el estado (ZXV_WP_*) */
+#define ZXV_WIFI_FORGET         6       /* olvida todos los PC emparejados */
+/* INFO: */
+#define ZXV_WIFI_INFO_SIZE      96
+#define ZXV_WI_STATE            0       /* u8: ZXV_WS_* */
+#define ZXV_WI_SCANNING         1       /* u8: 1 mientras busca */
+#define ZXV_WI_RSSI             2       /* i8: la señal, en dBm (0 sin conectar) */
+#define ZXV_WI_PAIR             3       /* u8: ZXV_WP_* */
+#define ZXV_WI_PAIRED           4       /* u8: cuántos PC emparejados */
+#define ZXV_WI_CODE             8       /* u32: el código al emparejar (6 cifras) */
+#define ZXV_WI_SSID             12      /* la red (hasta 32 bytes y su 0) */
+#define ZXV_WI_IP               45      /* "192.168.0.24" (16) */
+#define ZXV_WI_NAME             61      /* el nombre de la máquina en la red: "ZX-V-1A2B" (17) */
+#define ZXV_WI_PC               78      /* el PC que se empareja (18, recortado) */
+#define ZXV_WS_NONE             0       /* sin radio */
+#define ZXV_WS_OFF              1       /* sin red elegida */
+#define ZXV_WS_JOINING          2       /* conectando */
+#define ZXV_WS_UP               3       /* conectada, con dirección */
+#define ZXV_WS_BADAUTH          4       /* la contraseña no vale */
+#define ZXV_WS_NONET            5       /* no encuentra la red */
+#define ZXV_WS_FAIL             6       /* otro fallo */
+#define ZXV_WP_CLOSE            0       /* (pedir) cerrado; (estado) cerrado */
+#define ZXV_WP_OPEN             1       /* abierto: espera a un PC */
+#define ZXV_WP_CODE             2       /* (estado) un PC: el código, para compararlo */
+#define ZXV_WP_DONE             3       /* (estado) aceptado y guardado */
+#define ZXV_WP_FAILED           4       /* (estado) el PC se fue, o se rechazó */
+#define ZXV_WP_ACCEPT           2       /* (pedir) el usuario acepta */
+#define ZXV_WP_REJECT           3       /* (pedir) el usuario rechaza */
+/* LIST: hasta 10 redes, cada una en 36 bytes: el nombre (32 y su 0), la
+ * señal (i8, dBm), si tiene contraseña (u8) y el canal (u8). */
+#define ZXV_WIFI_LIST_MAX       10
+#define ZXV_WIFI_LIST_ENTRY     36
+#define ZXV_WIFI_LIST_SIZE      (ZXV_WIFI_LIST_MAX * ZXV_WIFI_LIST_ENTRY)
 
 /* --- Números de la API (spec §7.3) -------------------------------------- */
 #define ZXV_API_VERSION         0
