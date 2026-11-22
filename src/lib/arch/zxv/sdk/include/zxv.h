@@ -8,7 +8,7 @@
 #ifndef ZXV_H
 #define ZXV_H
 
-#define ZXV_SPEC_VERSION        0x00000001u     /* 0.1 */
+#define ZXV_SPEC_VERSION        0x00000002u     /* 0.2: PROG_FILE y PROG_CRC (D109) */
 
 /* --- Mapa de memoria (spec §3) ------------------------------------------ */
 #define ZXV_FLASH_BASE          0x10000000u
@@ -279,6 +279,11 @@
 #define ZXV_SV_LANG             (ZXV_SYSVARS + 0x20u)   /* u32: ZXV_LANG('e','s') */
 #define ZXV_SV_EDITOR           (ZXV_SYSVARS + 0x24u)   /* u32: 1 = el BASIC espera una orden */
 #define ZXV_SV_PREFS            (ZXV_SYSVARS + 0x28u)   /* u32: las preferencias (ZXV_PREF_...) */
+/* El programa .ZXV en marcha (D109): su fichero, abierto mientras va si lleva
+ * bancos (el número del fichero + 1; 0 si no), y el CRC de su imagen (el de
+ * su cabecera; 0 sin programa). Solo lectura: las escribe el cargador. */
+#define ZXV_SV_PROG_FILE        (ZXV_SYSVARS + 0x2Cu)
+#define ZXV_SV_PROG_CRC         (ZXV_SYSVARS + 0x30u)
 
 /* Las preferencias de la máquina, que guarda la plataforma (spec §7.11). */
 #define ZXV_PREF_NO_CLICK       0x01u   /* las teclas del editor, sin clic */
@@ -502,6 +507,7 @@
 #define ZXV_E_NOCLOCK           (-16)   /* el reloj no está en hora */
 #define ZXV_E_INVAL             (-17)   /* valor no válido (una fecha que no existe) */
 #define ZXV_E_OFFLINE           (-18)   /* la unidad EXT: no tiene servidor */
+#define ZXV_E_CHANGED           (-19)   /* el fichero del programa ha cambiado (sus bancos, D109) */
 
 /* --- Ejecutables .ZXV (spec §9.2) ---------------------------------------- */
 #define ZXV_HDR_SIZE            72
@@ -520,6 +526,35 @@
 #define ZXV_H_CRC               0x20
 #define ZXV_H_NAME              0x24    /* char[28] */
 #define ZXV_H_SCREEN            0x40    /* u32: la pantalla de carga, detrás de la cabecera */
+
+/* --- Los bancos de un .ZXV (D109): detrás de la imagen, que el cargador no
+ * mira. Al final del fichero, el cierre: "ZXVBANK1", dónde empieza el índice
+ * y cuánto ocupa (u32 cada uno). El índice: una cabecera y una entrada por
+ * banco. Todo en little endian. ---------------------------------------- */
+#define ZXV_BANK_MAGIC          "ZXVBANK1"
+#define ZXV_BANK_TAIL           16
+#define ZXV_BANK_T_INDEX        8       /* u32: dónde empieza el índice */
+#define ZXV_BANK_T_INDEX_LEN    12      /* u32: lo que ocupa */
+#define ZXV_BANK_HEAD           16
+#define ZXV_BANK_I_COUNT        0       /* u32: cuántos bancos */
+#define ZXV_BANK_I_PROG_CRC     4       /* u32: el CRC de la imagen del programa (su huella) */
+#define ZXV_BANK_I_IMAGE_SIZE   8       /* u32: el tamaño de la imagen */
+#define ZXV_BANK_I_CRC          12      /* u32: el CRC de las entradas */
+#define ZXV_BANK_ENTRY          48
+#define ZXV_BANK_NAME_MAX       15      /* caracteres por nombre */
+#define ZXV_BANK_E_NAME         0       /* char[16], con su 0 */
+#define ZXV_BANK_E_KIND         16      /* u8: ZXV_BANK_DATA o ZXV_BANK_CODE */
+#define ZXV_BANK_E_METHOD       17      /* u8: ZXV_BANK_STORED o ZXV_BANK_DEFLATE */
+#define ZXV_BANK_E_REGION       18      /* u8: la zona de los de código */
+#define ZXV_BANK_E_OFFSET       20      /* u32: dónde empieza, desde el principio del fichero */
+#define ZXV_BANK_E_STORED       24      /* u32: lo que ocupa en el fichero */
+#define ZXV_BANK_E_SIZE         28      /* u32: lo que ocupa de verdad */
+#define ZXV_BANK_E_CRC          32      /* u32: el CRC de lo de verdad */
+#define ZXV_BANK_E_ADDR         36      /* u32: los de código, dónde van */
+#define ZXV_BANK_DATA           0
+#define ZXV_BANK_CODE           1
+#define ZXV_BANK_STORED         0
+#define ZXV_BANK_DEFLATE        1       /* deflate sin envoltorio (RFC 1951) */
 
 /* --- Pantallas (D89): el objeto pantalla de un .gfx y la pantalla de carga
  * de un .zxv o un .zvb. Modo (u8), color del borde (u8), marcas (u8), 0 (u8),
