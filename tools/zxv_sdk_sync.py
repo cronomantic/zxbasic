@@ -3,7 +3,7 @@
 
     tools/zxv_sdk_sync.py PATH/TO/ZX-V
 
-src/lib/arch/zxv/sdk gets crt0.S, zxv.ld, zxvlib.c, the headers, the music library (sdk/music, for
+src/lib/arch/zxv/sdk gets crt0.S, zxv.ld, zxvlib.c, zxvbank.c and zxvbankcode.c (the banks, --code-bank), the headers, the music library (sdk/music, for
 MUSICPLAY and SFX) and the SDK licence (MIT), and src/lib/arch/zxv/runtime/zxb_font.c the ZX-V
 font, converted by its rom/tools/mkfont.py. Then check with tests/zxv/run.py that the programs
 still work.
@@ -16,8 +16,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TARGET = os.path.join(HERE, "..", "src", "lib", "arch", "zxv")
-FILES = ["crt0.S", "zxv.ld", "zxvlib.c", "LICENSE"]
-HEADERS = ["zxv.h", "zxv_api.h", "zxv_gfx.h", "zxv_music.h"]
+FILES = ["crt0.S", "zxv.ld", "zxvlib.c", "zxvbank.c", "zxvbankcode.c", "LICENSE"]
+HEADERS = ["zxv.h", "zxv_api.h", "zxv_bank.h", "zxv_gfx.h", "zxv_music.h"]
 
 
 def main() -> int:

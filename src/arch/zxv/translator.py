@@ -16,6 +16,7 @@ from src.arch.z80.backend.runtime import Labels as RuntimeLabel
 from src.arch.z80.visitor.function_translator import FunctionTranslator as Z80FunctionTranslator
 from src.arch.z80.visitor.translator import Translator as Z80Translator
 from src.arch.z80.visitor.var_translator import VarTranslator as Z80VarTranslator
+from src.arch.zxv import banks
 
 __all__ = "FunctionTranslator", "Translator", "VarTranslator"
 
@@ -69,7 +70,16 @@ class Translator(ZxvTranslation, Z80Translator):
 
 
 class FunctionTranslator(ZxvTranslation, Z80FunctionTranslator):
-    pass
+    def visit_FUNCTION(self, node):
+        # A function of a code bank (zxbc --code-bank, banks.py) goes in the section of its bank
+        from src.arch.zxv import driver
+
+        bank = driver.code_banks().of_function(node)
+        if bank:
+            self.ic_inline(banks.begin(*bank))
+        yield from super().visit_FUNCTION(node)
+        if bank:
+            self.ic_inline(banks.END)
 
 
 class VarTranslator(ZxvTranslation, Z80VarTranslator):

@@ -187,6 +187,42 @@ SFXLOAD "game"
 LOAD "level1" CODE @map(0)
 ```
 
+## Code banks
+
+`--code-bank NAME[@REGION]=FILE` (only with `--arch=zxv`, and as many times as
+needed) puts the `SUB`s and `FUNCTION`s defined in `FILE` (the main file or an
+`#include`) in a code bank (ZX-V decision D109). They are not in memory with the
+rest of the program: each bank goes at the end of the `.zxv` and is loaded from
+it the first time one of its functions is called, into a region of memory (0 to
+7, 0 by default) that the banks of that region share. The program calls them as
+always: each one has a small bridge in the resident part that loads its bank if
+needed and jumps to it. So a game can have the code of each stage in its own
+file, and only the current one takes memory.
+
+```sh
+python3 zxbc.py --arch=zxv --code-bank valley=valley.bas --code-bank space=space.bas game.bas
+```
+
+- Only the functions go to the bank. The variables of the file (the `DIM`s
+  outside the functions), the strings and the libraries (`zxv.bas`...) stay in
+  the resident part, so they keep their values when another bank is loaded.
+- Calls between functions of the same bank go straight to them (recursion
+  too). A call to another bank goes through its bridge, which loads it.
+- **A bank in use is not replaced:** if a function of bank `a` calls (directly
+  or not) one of bank `b` in the same region, `b` would have to be loaded over
+  the code that is running; instead the program stops with "Bank a in use:
+  cannot load b in its region". Put banks that call each other in different
+  regions (`b@1=b.bas`).
+- Loading a bank takes a few milliseconds from the card or `ROM:`, more from
+  `EXT:`: the first call of each stage, behind its title, is a good moment.
+- Inside a function of a bank, an `ASM` block must not change the section
+  (`.data`, `.text`...).
+- It needs a ZX-V ROM with banks (specification 0.2); with an older one, the
+  first call stops the program with "the ROM has no banks".
+
+The example `examples/zxbasic/fases` of ZX-V has two stages, each one in its
+bank. `tests/zxv/bancos.bas` and `bancosuso.bas` test them.
+
 ## Libraries
 
 `#include <...>` looks for them in `src/lib/arch/zxv/stdlib`. They keep the names

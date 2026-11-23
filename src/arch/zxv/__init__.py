@@ -18,7 +18,7 @@ from src.api.constants import TYPE
 from src.api.options import Action
 from src.arch.z80 import beep
 from src.arch.zxv import backend
-from src.arch.zxv.driver import EMBED, LOADING_SCREEN, finish
+from src.arch.zxv.driver import CODE_BANKS, EMBED, LOADING_SCREEN, finish, reset_code_banks
 from src.arch.zxv.translator import FunctionTranslator, Translator, VarTranslator
 
 __all__ = (
@@ -55,11 +55,24 @@ def add_arguments(parser) -> None:
         "no file with its name in the current folder, so the program works alone, from ROM: too",
     )
     OPTIONS(Action.ADD_IF_NOT_DEFINED, name=EMBED, type=list, default=[])
+    group.add_argument(
+        "--code-bank",
+        type=str,
+        metavar="NAME[@REGION]=FILE",
+        action="append",
+        default=[],
+        help="Puts the SUBs and FUNCTIONs of FILE (the main file or an #include) in a code bank (it can be "
+        "repeated): they are loaded from the .zxv when they are called, in a region of the memory (0 to 7, 0 "
+        "by default) that the banks of that region share. Needs a ZX-V ROM with banks (spec 0.2)",
+    )
+    OPTIONS(Action.ADD_IF_NOT_DEFINED, name=CODE_BANKS, type=list, default=[])
 
 
 def set_options(options) -> None:
     OPTIONS[LOADING_SCREEN] = options.loading_screen
     OPTIONS[EMBED] = list(options.embed or [])
+    OPTIONS[CODE_BANKS] = list(getattr(options, "code_bank", None) or [])
+    reset_code_banks()
 
 
 def setup() -> None:

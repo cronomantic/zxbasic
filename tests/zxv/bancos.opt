@@ -1,0 +1,1 @@
+--code-bank uno=bancos.inc/uno.bas --code-bank dos=bancos.inc/dos.bas --code-bank tres@1=bancos.inc/tres.bas

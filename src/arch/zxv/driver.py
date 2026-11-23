@@ -15,6 +15,8 @@ Needs the RISC-V GCC toolchain:
 --loading-screen FILE (OPTIONS.loading_screen) puts a loading screen in the .zxv, a PNG or a .gfx (screen.py).
 --embed FILE (OPTIONS.embed, repeated) puts files inside the .zxv, for when they are not in the current folder
 (zxb_embed.c).
+--code-bank NAME[@REGION]=FILE (OPTIONS.code_banks, repeated) puts the SUBs and FUNCTIONs of FILE in a code bank
+(banks.py).
 """
 
 import os
@@ -28,6 +30,7 @@ from src.api import errmsg
 from src.api import global_ as gl
 from src.api.config import OPTIONS
 from src.api.utils import open_file
+from src.arch.zxv import banks
 from src.arch.zxv.screen import loading_screen
 from src.arch.zxv.zxvfile import ZxvError, zxv_from_elf
 from src.zxbc.args_parser import FileType
@@ -39,6 +42,27 @@ SDK_DIR = os.path.join(LIB_DIR, "sdk")
 LOADING_SCREEN = "loading_screen"  # The option (zxbc --loading-screen FILE)
 EMBED = "embed"  # The option (zxbc --embed FILE, repeated)
 EMBED_NAME_MAX = 63  # The longest file name of ZX-V
+CODE_BANKS = banks.CODE_BANKS  # The option (zxbc --code-bank NAME[@REGION]=FILE, repeated)
+
+_banks: banks.Banks | None = None
+
+
+def code_banks() -> banks.Banks:
+    """The code banks of this compilation (--code-bank), read once"""
+    global _banks
+    if _banks is None:
+        specs = OPTIONS[CODE_BANKS].value if CODE_BANKS in OPTIONS else []
+        try:
+            _banks = banks.Banks(list(specs or []))
+        except banks.BankError as e:
+            errmsg.error(0, f"zxv: {e}")
+            _banks = banks.Banks([])
+    return _banks
+
+
+def reset_code_banks() -> None:
+    global _banks
+    _banks = None
 
 PROLOGUE = """\
 \t.option norelax
@@ -118,6 +142,13 @@ def finish(backend) -> int:
     if gl.has_errors:
         return 1
 
+    # The functions of the code banks: renamed, with their bridges (banks.py)
+    code, used, funcs = banks.rewrite(code)
+    bank_asm = banks.bridges(used, funcs) if used else ""
+    for spec_name, _ in code_banks().by_file.values():
+        if all(spec_name != name for name, _ in used):
+            errmsg.warning(0, f"zxv: --code-bank {spec_name}: no SUB or FUNCTION of its file is used")
+
     # The variables, between ZXBASIC_USER_DATA and its end (SAVE/LOAD ... DATA without a name)
     start, end = gl.ZXBASIC_USER_DATA, gl.ZXBASIC_USER_DATA + "_END"
     data = (
@@ -126,14 +157,14 @@ def finish(backend) -> int:
         + ["\t.data", f"{end}:", f"\t.set {gl.ZXBASIC_USER_DATA_LEN}, {end} - {start}"]
     )
     asm = PROLOGUE.split("\n") + code + data + backend.data
-    asm_text = "\n".join(asm) + "\n"
+    asm_text = "\n".join(asm) + "\n" + bank_asm + ("\n" if bank_asm else "")
 
     if OPTIONS.output_file_type == FileType.ASM:
         with open_file(OPTIONS.output_filename, "wt", "utf-8") as f:
             f.write(asm_text)
         return 0
 
-    return build(asm_text, OPTIONS.output_filename)
+    return build(asm_text, OPTIONS.output_filename, used)
 
 
 def embed_table(files: list[str]) -> str | None:
@@ -188,7 +219,7 @@ def run(cmd: list[str]) -> bool:
     return True
 
 
-def build(asm_text: str, output: str) -> int:
+def build(asm_text: str, output: str, used: list[tuple[str, int]] = ()) -> int:
     cross = os.environ.get("ZXV_CROSS", "riscv64-unknown-elf-")
     sdk = os.path.abspath(SDK_DIR)
     runtime = os.path.abspath(RUNTIME_DIR)
@@ -228,6 +259,20 @@ def build(asm_text: str, output: str) -> int:
             with open(extra[0], "wt", encoding="utf-8") as f:
                 f.write(table)
 
+        # The code banks: zxv.ld with their regions, and the bank runtime of the SDK
+        ld = os.path.join(sdk, "zxv.ld")
+        if used:
+            try:
+                with open(ld, encoding="utf-8") as f:
+                    script = banks.linker_script(f.read(), used)
+            except banks.BankError as e:
+                errmsg.error(0, f"zxv: {e}")
+                return 1
+            ld = os.path.join(tmp, "zxv.ld")
+            with open(ld, "wt", encoding="utf-8") as f:
+                f.write(script)
+            extra += [os.path.join(sdk, "zxvbank.c"), os.path.join(sdk, "zxvbankcode.c")]
+
         elf = os.path.join(tmp, "prog.elf")
         cmd = [
             cross + "gcc",
@@ -250,7 +295,7 @@ def build(asm_text: str, output: str) -> int:
             "-nostartfiles",
             "-static",
             "-T",
-            os.path.join(sdk, "zxv.ld"),
+            ld,
             "-Wl,--gc-sections",
             "-Wl,--no-warn-rwx-segments",
             os.path.join(sdk, "crt0.S"),
