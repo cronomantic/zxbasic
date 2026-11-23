@@ -235,6 +235,9 @@ void zxb_map_draw(int m, int mx, int my, int x, int y, int w, int h, int f)
     zxb_gfx_end();
 }
 
+/* Map m for zxb_sdklib.c (zxvmapmove.bas): it must exist, not its tiles */
+zxv_tilemap zxb_maps_tilemap(int m) { return tilemap(m, 0); }
+
 /* CELL(m, x, y): the cell at column x and row y, with its bits (0 out of a
  * map that does not repeat) */
 int zxb_cell(int m, int x, int y)
@@ -304,6 +307,17 @@ static int32_t turns(int32_t rad)
 #define LINES_MAX 768                   /* the tallest page: 256 x 768 */
 static zxv_m7line lines[LINES_MAX];
 
+/* The camera of the last FLOOR or FLOORMAP and the width of its page, for
+ * zxvm7.bas: NULL if there was none */
+static zxv_m7cam floor_cam;
+static int floor_w;
+
+const zxv_m7cam *zxb_maps_floor_cam(int *width)
+{
+    *width = floor_w;
+    return floor_w ? &floor_cam : 0;
+}
+
 /* The rows [y0, page height) of plane n (a texture, or a map with is_map) */
 static void plane(int is_map, int n, int y0)
 {
@@ -341,6 +355,8 @@ void zxb_floor(int is_map, int n, int32_t x, int32_t y, int32_t h, int32_t a, in
         zxb_ERROR(ERR_INT_RANGE);
     range(horizon, -32768, 32767);
     zxv_m7cam cam = { x, y, h, turns(a), focal, (int16_t)horizon, 0 };
+    floor_cam = cam;
+    floor_w = pg.w;
     zxv_m7_camera(lines, pg.h, &cam);
     plane(is_map, n, horizon + 1);
 }

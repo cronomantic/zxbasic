@@ -1,8 +1,9 @@
 /* SPDX-License-Identifier: MIT. Copyright (c) 2026 Cronomantic. */
 /*
  * zxb_sdklib.c - The optional libraries of the ZX-V SDK (sdk/lib, ZX-V D111)
- * for zxvinput.bas, zxvsave.bas, zxvfade.bas, zxvinflate.bas, zxvmath.bas and
- * zxvfont.bas. Their state (the controls of two players, four fonts, a
+ * for zxvinput.bas, zxvsave.bas, zxvfade.bas, zxvinflate.bas, zxvmath.bas,
+ * zxvfont.bas, zxvmapmove.bas and zxvm7.bas (on the maps and the FLOOR of
+ * zxb_maps.c). Their state (the controls of two players, four fonts, a
  * table of scores) stays here and the BASIC names it by number. With
  * --gc-sections, only what the program uses goes into it.
  */
@@ -11,6 +12,8 @@
 #include "zxv_font.h"
 #include "zxv_inflate.h"
 #include "zxv_input.h"
+#include "zxv_m7.h"
+#include "zxv_mapmove.h"
 #include "zxv_math.h"
 #include "zxv_save.h"
 
@@ -382,3 +385,109 @@ int zxb_font_height(int n, zstr text, int scale)
         zxb_free(heap);
     return h;
 }
+
+/* --- zxvmapmove.bas ------------------------------------------------------------------ */
+
+static uint8_t kinds[2][4096];           /* the type of each tile, of the sets of 8 and 16 */
+static uint8_t kinds_set[2];             /* given with TILEKIND (if not: 0 empty, the rest solid) */
+static uint8_t outside[16] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+static int found_x, found_y;
+
+void zxb_tile_kind(int s, int tile, int kind)
+{
+    if (s != 8 && s != 16)
+        zxb_ERROR(ERR_INVALID_ARG);
+    range(tile, 0, 4095);
+    range(kind, 0, 255);
+    int k = s == 16;
+    if (!kinds_set[k]) {                                /* from the default: 0 empty, the rest solid */
+        for (int i = 0; i < 4096; i++)
+            kinds[k][i] = i ? ZXV_TILE_SOLID : ZXV_TILE_EMPTY;
+        kinds_set[k] = 1;
+    }
+    kinds[k][tile] = (uint8_t)kind;
+}
+
+void zxb_map_outside(int m, int kind)
+{
+    range(m, 0, 15);
+    range(kind, 0, 255);
+    outside[m] = (uint8_t)kind;
+}
+
+/* The map m, with the types, for mapmove.c (t: where to keep the tilemap) */
+static zxv_mapsolid solid(int m, zxv_tilemap *t)
+{
+    *t = zxb_maps_tilemap(m);
+    int k = t->size == 16;
+    zxv_mapsolid ms = { t, kinds_set[k] ? kinds[k] : 0, 4096, outside[m] };
+    return ms;
+}
+
+int zxb_map_move(int m, int32_t *x, int32_t *y, int w, int h, int32_t dx, int32_t dy, int flags)
+{
+    zxv_tilemap t;
+    zxv_mapsolid ms = solid(m, &t);
+    range(w, 1, 32767);
+    range(h, 1, 32767);
+    return (int)zxv_map_move(&ms, x, y, w, h, dx, dy, (unsigned)flags);
+}
+
+int zxb_map_on_ground(int m, int32_t x, int32_t y, int w, int h, int flags)
+{
+    zxv_tilemap t;
+    zxv_mapsolid ms = solid(m, &t);
+    return zxv_map_on_ground(&ms, x, y, w, h, (unsigned)flags);
+}
+
+int zxb_map_find(int m, int32_t x, int32_t y, int w, int h, int kind)
+{
+    zxv_tilemap t;
+    zxv_mapsolid ms = solid(m, &t);
+    return zxv_map_find(&ms, x, y, w, h, kind, &found_x, &found_y);
+}
+
+int zxb_map_found_x(void) { return found_x; }
+int zxb_map_found_y(void) { return found_y; }
+
+int zxb_map_kind(int m, int px, int py)
+{
+    zxv_tilemap t;
+    zxv_mapsolid ms = solid(m, &t);
+    return zxv_map_kind(&ms, px, py);
+}
+
+/* --- zxvm7.bas ------------------------------------------------------------------------- */
+
+static zxv_m7pos proj;
+static int32_t at_x, at_y;
+
+static const zxv_m7cam *camera(int *w)
+{
+    const zxv_m7cam *c = zxb_maps_floor_cam(w);
+    if (!c)
+        zxb_ERROR(ERR_INVALID_ARG);                     /* no FLOOR before */
+    return c;
+}
+
+int zxb_floor_project(int32_t x, int32_t y, int32_t h)
+{
+    int w;
+    const zxv_m7cam *c = camera(&w);
+    return zxv_m7_project(c, w, x, y, h, &proj);
+}
+
+int zxb_floor_x(void) { return proj.x; }
+int zxb_floor_y(void) { return proj.y; }
+int32_t zxb_floor_scale(void) { return proj.scale; }
+int32_t zxb_floor_depth(void) { return proj.depth; }
+
+int zxb_floor_at(int sx, int sy)
+{
+    int w;
+    const zxv_m7cam *c = camera(&w);
+    return zxv_m7_floor_at(c, w, sx, sy, &at_x, &at_y);
+}
+
+int32_t zxb_floor_at_x(void) { return at_x; }
+int32_t zxb_floor_at_y(void) { return at_y; }

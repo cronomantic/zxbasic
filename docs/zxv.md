@@ -241,7 +241,7 @@ and parameters of the Z80 ones, but addresses are `ULong`:
 | `random.bas`, `round.bas`, `fmath.bas`, `hmirror.bas`, `asc.bas` | `randInt`, `randFixed`, `randomLimit`, `Round`, `fSin`, `fCos`, `fTan`, `fSqrt`, `hMirror`, `asc` |
 | `retrace.bas`, `sinclair.bas` | `waitretrace`; the Sinclair BASIC functions |
 | `zxv.bas` | What is only in ZX-V (below) |
-| `zxvinput.bas`, `zxvsave.bas`, `zxvfade.bas`, `zxvfont.bas`, `zxvinflate.bas`, `zxvmath.bas` | The optional libraries of the ZX-V SDK for games (below) |
+| `zxvinput.bas`, `zxvsave.bas`, `zxvfade.bas`, `zxvfont.bas`, `zxvinflate.bas`, `zxvmath.bas`, `zxvmapmove.bas`, `zxvm7.bas` | The optional libraries of the ZX-V SDK for games (below) |
 
 ### zxv.bas
 
@@ -315,12 +315,13 @@ BASIC names it by number.
 | `zxvfade.bas` | `FADETO addr, frames[, tables]`, `FADECOLOUR rgb, frames[, tables]`, `FADESTEP`, `FADEBUSY`, `FADEWAIT`, `RGBMIX(a, b, k, n)`, `RGB565(r, g, b)` | Palette fades: to black, to white or to other colours (`@pal(0)` of 16 `UInteger`; 0, the standard ones) in some frames, a step each `FADESTEP` while the game goes on, or all with `FADEWAIT` |
 | `zxvfont.bas` | `FONTROM n[, fixedw]`, `FONTGRAB n, x, y, w, h, cw, ch[, first, t, fixedw]`, `FONTSPACING n, s`, `FONTDRAW(n, x, y, t$, colour[, scale])`, `FONTWIDTH(n, t$[, scale])`, `FONTHEIGHT(...)`; `FONTOWN` | Text of any size (1-8 times) and colour, proportional or of fixed width, with accents (UTF-8) and line breaks (`CHR$ 10`): four fonts, the 8 x 8 of the ROM or one drawn on the page in cells of any size and in its colours. With `CLIP` and `PATTERN` |
 | `zxvinflate.bas` | `GUNZIP(src, n, dst, max)`, `GUNZIPSIZE(src, n)`, `INFLATE(src, n, dst, max)`; `INFLATEDATA`, `INFLATESPACE` | Data compressed with gzip on the PC, uncompressed in the memory (the `.gz` checked with its CRC) |
+| `zxvmapmove.bas` | `TILEKIND s, tile, kind`, `MAPOUTSIDE m, kind`, `MAPMOVE(m, x, y, w, h, dx, dy[, flags])`, `MAPONGROUND(m, x, y, w, h[, flags])`, `MAPFIND(m, x, y, w, h, kind)`, `MAPFOUNDX`, `MAPFOUNDY`, `MAPKIND(m, px, py)`; `TILEEMPTY`, `TILESOLID`, `TILEPLATFORM`, `HITLEFT`, `HITRIGHT`, `HITUP`, `HITDOWN`, `MOVETHROUGH` | Moving things through a tile map without going through the walls, however fast: each tile solid, empty, a platform (it only stops coming down from above) or of a type of the game (ladders, coins...) that `MAPFIND` finds. `x` and `y` are `Fixed` variables that `MAPMOVE` changes |
+| `zxvm7.bas` | `FLOORPROJECT(x, y[, h])`, `FLOORX`, `FLOORY`, `FLOORSCALE`, `FLOORDEPTH`, `FLOORAT(sx, sy)`, `FLOORATX`, `FLOORATY` | Things on the mode 7 floor: where a point of the floor of the last `FLOOR` or `FLOORMAP` is seen and how big (for `SPRITE` scaled), and which point of the floor is at a pixel |
 | `zxvmath.bas` | `TSIN(a)`, `TCOS(a)`, `TATAN2(y, x)`, `ISQRT(v)`, `HYPOT(x, y)`, `RNDSEED s`, `RNDNEXT`, `RNDRANGE(lo, hi)` | Sine and cosine as `Fixed` (angles in turns of 65536, the ones of the graphics engine), the angle of a vector, square roots, distances and random numbers with a seed of their own |
 
 `tests/zxv/sdkinput.bas`, `sdksave.bas`, `sdkfade.bas`, `sdkfont.bas`,
-`sdkinflate.bas` and `sdkmath.bas` test them. The moving through tile maps,
-the objects on the mode 7 floor and the 3D of the SDK are not here yet (the
-3D needs its models in BASIC).
+`sdkinflate.bas`, `sdkmath.bas`, `mapmove.bas` and `floorproj.bas` test them.
+The 3D of the SDK is not here yet: it needs its models in BASIC.
 
 ## Licence
 

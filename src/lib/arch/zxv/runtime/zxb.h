@@ -36,6 +36,10 @@ void zxb_gfx_begin(void);
 void zxb_gfx_end(void);
 zxv_bitmap zxb_page_bitmap(void);
 
+/* The tile maps and the camera of the last FLOOR (zxb_maps.c) */
+zxv_tilemap zxb_maps_tilemap(int m);
+const zxv_m7cam *zxb_maps_floor_cam(int *width);
+
 /* Strings (zxb_str.c) */
 zstr zxb_newstr(const void *chars, uint32_t len);
 zstr zxb_loadstr(const uint8_t *s);
