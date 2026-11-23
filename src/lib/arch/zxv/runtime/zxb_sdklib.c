@@ -2,12 +2,14 @@
 /*
  * zxb_sdklib.c - The optional libraries of the ZX-V SDK (sdk/lib, ZX-V D111)
  * for zxvinput.bas, zxvsave.bas, zxvfade.bas, zxvinflate.bas, zxvmath.bas,
- * zxvfont.bas, zxvmapmove.bas and zxvm7.bas (on the maps and the FLOOR of
- * zxb_maps.c). Their state (the controls of two players, four fonts, a
+ * zxvfont.bas, zxvmapmove.bas, zxvm7.bas (on the maps and the FLOOR of
+ * zxb_maps.c) and zxv3d.bas (the models live in arrays of the BASIC, from
+ * obj2c.py --bas). Their state (the controls of two players, four fonts, a
  * table of scores) stays here and the BASIC names it by number. With
  * --gc-sections, only what the program uses goes into it.
  */
 #include "zxb.h"
+#include "zxv_3d.h"
 #include "zxv_fade.h"
 #include "zxv_font.h"
 #include "zxv_inflate.h"
@@ -491,3 +493,113 @@ int zxb_floor_at(int sx, int sy)
 
 int32_t zxb_floor_at_x(void) { return at_x; }
 int32_t zxb_floor_at_y(void) { return at_y; }
+
+/* --- zxv3d.bas --------------------------------------------------------------------------- */
+
+#define MODELS3D        16
+
+static zxv_model models3d[MODELS3D];
+/* The camera of CAMERA3D (cx < 0, w = 0 or focal = 0: from the drawing page) */
+static zxv_camera cam3d = { { 0, 0, 0 }, 0, 0, 0, 0, -1, -1, 0, 0, 0 };
+static struct {
+    int x, y;
+    zxv_fix scale;
+} proj3d;
+
+/* MODEL3D n, verts, nverts, faces, nfaces, scale: the arrays of obj2c.py --bas
+ * (they must stay where they are: they are not copied) */
+void zxb_model3d(int n, uint32_t verts, int nverts, uint32_t faces, int nfaces, int32_t scale)
+{
+    range(n, 0, MODELS3D - 1);
+    range(nverts, 1, ZXV_3D_MAX_VERTS);
+    range(nfaces, 1, 0xFFFF);
+    if (scale <= 0 || !verts || !faces)
+        zxb_ERROR(ERR_INT_RANGE);
+    zxv_model m = { (const int16_t (*)[3])(uintptr_t)verts, (const uint16_t *)(uintptr_t)faces, (uint16_t)nverts,
+                    (uint16_t)nfaces, scale };
+    models3d[n] = m;
+}
+
+/* The camera, with what was left out taken from the drawing page */
+static zxv_camera camera3d(void)
+{
+    zxv_camera c = cam3d;
+    zxv_bitmap pg = zxb_page_bitmap();
+    if (c.w <= 0)
+        c.w = (int16_t)pg.w;
+    if (c.h <= 0)
+        c.h = (int16_t)pg.h;
+    if (c.cx < 0)
+        c.cx = (int16_t)(c.w / 2);
+    if (c.cy < 0)
+        c.cy = (int16_t)(c.h / 2);
+    if (c.focal <= 0)
+        c.focal = c.w / 2;
+    return c;
+}
+
+/* CAMERA3D x, y, z, yaw, pitch, roll, focal, cx, cy, w, h */
+void zxb_camera3d(const int32_t *a)
+{
+    range(a[6], 0, 32767);
+    range(a[7], -1, 32767);
+    range(a[8], -1, 32767);
+    range(a[9], 0, 4096);
+    range(a[10], 0, 4096);
+    zxv_camera c = { { a[0], a[1], a[2] }, a[3], a[4], a[5], a[6], (int16_t)a[7], (int16_t)a[8], (int16_t)a[9],
+                     (int16_t)a[10], 0 };
+    cam3d = c;
+}
+
+void zxb_light3d(int32_t x, int32_t y, int32_t z, int ambient)
+{
+    range(ambient, 0, 4);
+    zxv_3d_light(x, y, z, ambient);
+}
+
+void zxb_wireframe3d(int colour)
+{
+    if (colour < -1 || colour > 15)
+        zxb_ERROR(ERR_COLOUR);
+    zxv_3d_wireframe(colour);
+}
+
+void zxb_begin3d(void)
+{
+    zxv_camera c = camera3d();
+    zxv_3d_begin(&c);
+}
+
+/* ADD3D(m, x, y, z, yaw, pitch, roll, scale): the faces seen, or -1 if they
+ * do not fit */
+int zxb_add3d(int m, int32_t x, int32_t y, int32_t z, int32_t yaw, int32_t pitch, int32_t roll, int32_t scale)
+{
+    range(m, 0, MODELS3D - 1);
+    if (!models3d[m].verts || scale <= 0)
+        zxb_ERROR(ERR_INT_RANGE);
+    zxv_xform t;
+    zxv_xform_set(&t, yaw, pitch, roll, x, y, z);
+    if (scale != 0x10000)
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                t.m[i][j] = (zxv_fix)(((int64_t)t.m[i][j] * scale) >> 16);
+    return zxv_3d_add(&models3d[m], &t);
+}
+
+void zxb_draw3d(void)
+{
+    zxb_gfx_begin();
+    zxv_3d_draw();
+    zxb_gfx_end();
+}
+
+int zxb_project3d(int32_t x, int32_t y, int32_t z)
+{
+    zxv_camera c = camera3d();
+    zxv_vec3 p = { x, y, z };
+    return zxv_3d_project(&c, p, &proj3d.x, &proj3d.y, &proj3d.scale);
+}
+
+int zxb_proj3d_x(void) { return proj3d.x; }
+int zxb_proj3d_y(void) { return proj3d.y; }
+int32_t zxb_proj3d_scale(void) { return proj3d.scale; }

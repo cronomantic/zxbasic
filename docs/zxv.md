@@ -247,7 +247,7 @@ and parameters of the Z80 ones, but addresses are `ULong`:
 | `random.bas`, `round.bas`, `fmath.bas`, `hmirror.bas`, `asc.bas` | `randInt`, `randFixed`, `randomLimit`, `Round`, `fSin`, `fCos`, `fTan`, `fSqrt`, `hMirror`, `asc` |
 | `retrace.bas`, `sinclair.bas` | `waitretrace`; the Sinclair BASIC functions |
 | `zxv.bas` | What is only in ZX-V (below) |
-| `zxvinput.bas`, `zxvsave.bas`, `zxvfade.bas`, `zxvfont.bas`, `zxvinflate.bas`, `zxvmath.bas`, `zxvmapmove.bas`, `zxvm7.bas` | The optional libraries of the ZX-V SDK for games (below) |
+| `zxvinput.bas`, `zxvsave.bas`, `zxvfade.bas`, `zxvfont.bas`, `zxvinflate.bas`, `zxvmath.bas`, `zxvmapmove.bas`, `zxvm7.bas`, `zxv3d.bas` | The optional libraries of the ZX-V SDK for games (below) |
 
 ### zxv.bas
 
@@ -323,11 +323,12 @@ BASIC names it by number.
 | `zxvinflate.bas` | `GUNZIP(src, n, dst, max)`, `GUNZIPSIZE(src, n)`, `INFLATE(src, n, dst, max)`; `INFLATEDATA`, `INFLATESPACE` | Data compressed with gzip on the PC, uncompressed in the memory (the `.gz` checked with its CRC) |
 | `zxvmapmove.bas` | `TILEKIND s, tile, kind`, `MAPOUTSIDE m, kind`, `MAPMOVE(m, x, y, w, h, dx, dy[, flags])`, `MAPONGROUND(m, x, y, w, h[, flags])`, `MAPFIND(m, x, y, w, h, kind)`, `MAPFOUNDX`, `MAPFOUNDY`, `MAPKIND(m, px, py)`; `TILEEMPTY`, `TILESOLID`, `TILEPLATFORM`, `HITLEFT`, `HITRIGHT`, `HITUP`, `HITDOWN`, `MOVETHROUGH` | Moving things through a tile map without going through the walls, however fast: each tile solid, empty, a platform (it only stops coming down from above) or of a type of the game (ladders, coins...) that `MAPFIND` finds. `x` and `y` are `Fixed` variables that `MAPMOVE` changes |
 | `zxvm7.bas` | `FLOORPROJECT(x, y[, h])`, `FLOORX`, `FLOORY`, `FLOORSCALE`, `FLOORDEPTH`, `FLOORAT(sx, sy)`, `FLOORATX`, `FLOORATY` | Things on the mode 7 floor: where a point of the floor of the last `FLOOR` or `FLOORMAP` is seen and how big (for `SPRITE` scaled), and which point of the floor is at a pixel |
+| `zxv3d.bas` | `MODEL3D n, verts, nverts, faces, nfaces, scale`, `CAMERA3D x, y, z[, yaw, pitch, roll[, focal[, cx, cy, w, h]]]`, `LIGHT3D x, y, z[, ambient]`, `WIREFRAME3D colour`, `BEGIN3D`, `ADD3D(m, x, y, z[, yaw, pitch, roll[, scale]])`, `DRAW3D`, `PROJECT3D(x, y, z)`, `PROJ3DX`, `PROJ3DY`, `PROJ3DSCALE`, `MAT3D(dark, light[, flags])`; `TWOSIDED3D`, `FLAT3D`, `DECAL3D` | Simple 3D: models of flat faces with light and pattern shading, like the 3D games of the 8 and 16 bits. `obj2c.py --bas` of the ZX-V SDK turns an `.obj` (Blender) into two arrays and a `SUB NAME_model(n)` that calls `MODEL3D` (16 models; the arrays are not copied, so they must be global). Each frame, `BEGIN3D`, an `ADD3D` per object (it returns the faces seen, or -1 if they do not fit: 400 a frame) and `DRAW3D`, on the drawing page. Coordinates are `Fixed` (x right, y up, z forwards); angles in turns of 65536. Without a view, `CAMERA3D` takes the whole page. `PROJECT3D` says where a point of the world is seen, to put sprites in it |
 | `zxvmath.bas` | `TSIN(a)`, `TCOS(a)`, `TATAN2(y, x)`, `ISQRT(v)`, `HYPOT(x, y)`, `RNDSEED s`, `RNDNEXT`, `RNDRANGE(lo, hi)` | Sine and cosine as `Fixed` (angles in turns of 65536, the ones of the graphics engine), the angle of a vector, square roots, distances and random numbers with a seed of their own |
 
 `tests/zxv/sdkinput.bas`, `sdksave.bas`, `sdkfade.bas`, `sdkfont.bas`,
-`sdkinflate.bas`, `sdkmath.bas`, `mapmove.bas` and `floorproj.bas` test them.
-The 3D of the SDK is not here yet: it needs its models in BASIC.
+`sdkinflate.bas`, `sdkmath.bas`, `mapmove.bas`, `floorproj.bas` and `sdk3d.bas`
+test them.
 
 ## Licence
 
