@@ -327,8 +327,9 @@ static int codes(inf_t *z)
         if (dist > z->done || len > z->max - z->done)
             return -1;
         uint8_t *o = z->out + z->done;
+        const uint8_t *from = o - dist;             /* puede solaparse con o: byte a byte */
         for (uint32_t i = 0; i < len; i++)
-            o[i] = o[i - dist];
+            o[i] = from[i];
         z->done += len;
     }
 }

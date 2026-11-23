@@ -17,6 +17,7 @@
 #include <stdint.h>
 
 #include "zxv_api.h"
+#include "zxv_gfx.h"
 #include "zxb_math.h"
 
 typedef uint8_t *zstr;
@@ -28,6 +29,12 @@ void *zxb_alloc(uint32_t n);
 void *zxb_try_alloc(uint32_t n);        /* NULL if there is no room */
 void zxb_free(void *p);
 void zxb_mem_init(void);
+
+/* The engine of the ROM draws on the drawing page, with CLIP and PATTERN
+ * (zxb_zxv.c), between these two; and that page as a bitmap */
+void zxb_gfx_begin(void);
+void zxb_gfx_end(void);
+zxv_bitmap zxb_page_bitmap(void);
 
 /* Strings (zxb_str.c) */
 zstr zxb_newstr(const void *chars, uint32_t len);

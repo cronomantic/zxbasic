@@ -54,8 +54,9 @@ void zxb_vram_wait(void)
             ;
 }
 
-/* The engine draws on the drawing page, with the CLIP rectangle */
-static void begin(void)
+/* The engine draws on the drawing page, with the CLIP rectangle and the
+ * PATTERN (also for zxb_sdklib.c: zxb_gfx_begin and zxb_gfx_end) */
+void zxb_gfx_begin(void)
 {
     zxb_vram_wait();
     zxv_bitmap b = { page_pix(draw_page), (uint16_t)(width / 2), (uint16_t)width, (uint16_t)height, 0 };
@@ -66,7 +67,13 @@ static void begin(void)
         zxv_gfx_pattern(pat, pat_paper);
 }
 
-static void end(void)
+zxv_bitmap zxb_page_bitmap(void)
+{
+    zxv_bitmap b = { page_pix(draw_page), (uint16_t)(width / 2), (uint16_t)width, (uint16_t)height, 0 };
+    return b;
+}
+
+void zxb_gfx_end(void)
 {
     zxv_gfx_target(0);
     if (pat_on)
@@ -308,9 +315,9 @@ void zxb_zxv_sprite(int n, int x, int y, int f, zstr c, int w, int h)
     }
     range(w, 1, 4096);
     range(h, 1, 4096);
-    begin();
+    zxb_gfx_begin();
     zxv_spr_draw_scaled(spr, x, y, w, h, f, len ? lut : 0);
-    end();
+    zxb_gfx_end();
 }
 
 /* HIT(a, ax, ay, b, bx, by): 1 if a solid pixel of sprite a at (ax, ay) falls
@@ -325,17 +332,17 @@ int zxb_zxv_hit(int a, int ax, int ay, int b, int bx, int by)
 void zxb_zxv_box(int c, int x, int y, int w, int h)
 {
     colour(c);
-    begin();
+    zxb_gfx_begin();
     zxv_gfx_rect(x, y, w, h, c);
-    end();
+    zxb_gfx_end();
 }
 
 void zxb_zxv_disc(int c, int x, int y, int r)
 {
     colour(c);
-    begin();
+    zxb_gfx_begin();
     zxv_gfx_circle(x, y, r, c, 1);
-    end();
+    zxb_gfx_end();
 }
 
 /* POLY c, x1, y1, ...: a point, a line or a filled polygon, up to 8 points;
@@ -354,14 +361,14 @@ void zxb_zxv_poly(int c, const int32_t *xy)
     }
     if (n == 0)
         zxb_ERROR(ERR_INVALID_ARG);
-    begin();
+    zxb_gfx_begin();
     if (n == 1)
         zxv_gfx_rect(p[0], p[1], 1, 1, c);
     else if (n == 2)
         zxv_gfx_line(p[0], p[1], p[2], p[3], c);
     else
         zxv_gfx_poly(p, n, c);
-    end();
+    zxb_gfx_end();
 }
 
 /* The patterns of PATTERN n, from 1 on, as in the BASIC of ZX-V (bit 7: the

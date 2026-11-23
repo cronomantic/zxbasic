@@ -229,6 +229,9 @@ def build(asm_text: str, output: str, used: list[tuple[str, int]] = ()) -> int:
     # The music library of the SDK (MUSICPLAY, SFX): with --gc-sections, only if the program uses it
     music = os.path.join(sdk, "music")
     sources += sorted(os.path.join(music, x) for x in os.listdir(music) if x.endswith(".c"))
+    # The optional libraries of the SDK (ZX-V D111: zxvinput.bas, zxvsave.bas, zxvfont.bas...): the same
+    lib = os.path.join(sdk, "lib")
+    sources += sorted(os.path.join(lib, x) for x in os.listdir(lib) if x.endswith(".c"))
 
     # The loading screen: the ROM shows it while it loads the program and, in mode 0 (the one of the program),
     # the program starts with it (the runtime does not clear the screen: ZXB_LOADING_SCREEN)

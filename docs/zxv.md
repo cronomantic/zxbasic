@@ -241,6 +241,7 @@ and parameters of the Z80 ones, but addresses are `ULong`:
 | `random.bas`, `round.bas`, `fmath.bas`, `hmirror.bas`, `asc.bas` | `randInt`, `randFixed`, `randomLimit`, `Round`, `fSin`, `fCos`, `fTan`, `fSqrt`, `hMirror`, `asc` |
 | `retrace.bas`, `sinclair.bas` | `waitretrace`; the Sinclair BASIC functions |
 | `zxv.bas` | What is only in ZX-V (below) |
+| `zxvinput.bas`, `zxvsave.bas`, `zxvfade.bas`, `zxvfont.bas`, `zxvinflate.bas`, `zxvmath.bas` | The optional libraries of the ZX-V SDK for games (below) |
 
 ### zxv.bas
 
@@ -294,6 +295,31 @@ are at `8(s0)`, `12(s0)`... (4 bytes each, 8 a `Float`), and a function that end
 with an `ASM` block returns what it leaves in `a0` (`a0` and `a1` for a `Float`).
 `zxb_ccall function` calls a C function of the runtime (it aligns the stack, as
 the ABI requires): that is how the libraries are written.
+
+### The libraries of the ZX-V SDK
+
+The optional libraries of the ZX-V SDK (`sdk/lib`, decision D111 of ZX-V),
+each one in a file of its own: `#include <zxvinput.bas>` and so on. They call
+the same C as the programs in C (copied in `src/lib/arch/zxv/sdk/lib` by
+`tools/zxv_sdk_sync.py`), and only what a program uses goes into it: a
+program without them does not change by a byte. Their state (the controls of
+the players, the fonts, the table of scores) stays in the library, and the
+BASIC names it by number.
+
+| File | | |
+|---|---|---|
+| `zxvinput.bas` | `CTRLUPDATE [p]`, `CTRLHELD([p])`, `CTRLPRESSED([p])`, `CTRLRELEASED([p])`, `CTRLFRAMES(p, a)`, `CTRLREPEAT(p, a[, delay, rate])`, `CTRLRESET [p]`, `CTRLKEY p, a, slot, k`, `CTRLBUTTON p, a, buttons`, `CTRLPAD p, pad`, `CTRLKEEPKEYS p, on`, `CTRLMAP([p])`, `CTRLMAPSIZE`, `NEWKEY`, `KEYNAME(k)`; the actions `CTRLRIGHT`, `CTRLLEFT`, `CTRLDOWN`, `CTRLUP`, `CTRLFIRE`, `CTRLFIRE2`, `CTRLFIRE3`, `CTRLSTART`, `CTRLSELECT`, `CTRLESC` and the keys `KEYA`... `KEYSPACE`, `KEYUPKEY`... | The keyboard and the joysticks at once, as actions, for two players (`p` 0 and 1): player 0 with the cursors or Q A O P, Space or M to fire and joystick 0; player 1, joystick 1 and the keys you give it. What was pressed or released in this frame, repeat for menus, and keys that the player can change (`NEWKEY`, `KEYNAME` in the language of the machine) and save (`CTRLMAP` with `SAVEDATA`). It empties the queue of keys, so what is typed in the game does not reach the BASIC (`CTRLKEEPKEYS` keeps it) |
+| `zxvsave.bas` | `SAVEDATA(f$, version, addr, size)`, `LOADDATA(...)`, `CRC32(addr, size)`, `SCORECLEAR [n]`, `SCOREADD(score, name$)`, `SCORE(i)`, `SCORENAME(i)`, `SCORESAVE(f$[, version])`, `SCORELOAD(f$[, version])`; `SAVENOFILE`, `SAVENOCARD`, `SAVEDAMAGED`, `SAVEVERSION` | Saving the data of a game (`@a(0)` of an array, `@v` of a variable) with the version of the data and a CRC, through a temporary file: a power cut leaves the file before, and a file of another version or damaged is not read (the memory does not change). Without a card, an error and the game goes on. And a table of up to 10 scores |
+| `zxvfade.bas` | `FADETO addr, frames[, tables]`, `FADECOLOUR rgb, frames[, tables]`, `FADESTEP`, `FADEBUSY`, `FADEWAIT`, `RGBMIX(a, b, k, n)`, `RGB565(r, g, b)` | Palette fades: to black, to white or to other colours (`@pal(0)` of 16 `UInteger`; 0, the standard ones) in some frames, a step each `FADESTEP` while the game goes on, or all with `FADEWAIT` |
+| `zxvfont.bas` | `FONTROM n[, fixedw]`, `FONTGRAB n, x, y, w, h, cw, ch[, first, t, fixedw]`, `FONTSPACING n, s`, `FONTDRAW(n, x, y, t$, colour[, scale])`, `FONTWIDTH(n, t$[, scale])`, `FONTHEIGHT(...)`; `FONTOWN` | Text of any size (1-8 times) and colour, proportional or of fixed width, with accents (UTF-8) and line breaks (`CHR$ 10`): four fonts, the 8 x 8 of the ROM or one drawn on the page in cells of any size and in its colours. With `CLIP` and `PATTERN` |
+| `zxvinflate.bas` | `GUNZIP(src, n, dst, max)`, `GUNZIPSIZE(src, n)`, `INFLATE(src, n, dst, max)`; `INFLATEDATA`, `INFLATESPACE` | Data compressed with gzip on the PC, uncompressed in the memory (the `.gz` checked with its CRC) |
+| `zxvmath.bas` | `TSIN(a)`, `TCOS(a)`, `TATAN2(y, x)`, `ISQRT(v)`, `HYPOT(x, y)`, `RNDSEED s`, `RNDNEXT`, `RNDRANGE(lo, hi)` | Sine and cosine as `Fixed` (angles in turns of 65536, the ones of the graphics engine), the angle of a vector, square roots, distances and random numbers with a seed of their own |
+
+`tests/zxv/sdkinput.bas`, `sdksave.bas`, `sdkfade.bas`, `sdkfont.bas`,
+`sdkinflate.bas` and `sdkmath.bas` test them. The moving through tile maps,
+the objects on the mode 7 floor and the 3D of the SDK are not here yet: the
+first two need the maps and the textures of the ZX-V BASIC, and the 3D its
+models in BASIC.
 
 ## Licence
 
