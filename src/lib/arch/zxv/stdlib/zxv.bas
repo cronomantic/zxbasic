@@ -219,6 +219,32 @@ sub POLY(c as UByte, x1 as Integer, y1 as Integer, x2 as Integer = -32768, y2 as
     end asm
 end sub
 
+REM PATTERN n[, p]: BOX, DISC and POLY draw with pattern n (1 to 11, as PATTERN
+REM in the BASIC of ZX-V: 1 a chessboard, 2 a quarter, 3 an eighth, 4 three
+REM quarters, 5 and 6 stripes, 7 and 8 diagonals, 9 a grid, 10 bricks, 11
+REM diamonds): their colour where the pattern has a 1, and paper p (0-15) where
+REM it has a 0, or nothing there with p = -1 (the default). PATTERN alone (or
+REM 0): no pattern. Needs a ZX-V ROM with patterns (ZX-V D110)
+sub PATTERN(n as UByte = 0, p as Integer = -1)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    zxb_ccall zxb_zxv_pattern
+    end asm
+end sub
+
+REM PATTERNBITS r0, r1, r2, r3, r4, r5, r6, r7[, p]: a pattern of your own, a
+REM byte a row (BIN 10101010...; bit 7 is the pixel on the left), with paper p
+REM as in PATTERN
+sub PATTERNBITS(r0 as UByte, r1 as UByte, r2 as UByte, r3 as UByte, r4 as UByte, r5 as UByte, _
+                r6 as UByte, r7 as UByte, p as Integer = -1)
+    asm
+    addi a0, s0, 8
+    lw a1, 40(s0)
+    zxb_ccall zxb_zxv_pattern_bits
+    end asm
+end sub
+
 REM CLIP x, y, w, h: the fast graphics only draw in that rectangle; CLIP
 REM alone, everywhere
 sub CLIP(x as Integer = 0, y as Integer = 0, w as Integer = -1, h as Integer = 0)

@@ -21,6 +21,8 @@ void zxb_ERROR(int code);
 static int width = 256, height = 192;  /* Of the pages */
 static int draw_page;
 static int clip_on, clip_x0, clip_y0, clip_x1, clip_y1;
+static int pat_on, pat_paper;           /* PATTERN */
+static uint8_t pat[8];
 static uint32_t wait_frame;
 
 static uint8_t *page_pix(int page) { return (uint8_t *)(uintptr_t)(page ? ZXV_VRAM1_BASE : ZXV_VRAM0_BASE); }
@@ -60,9 +62,16 @@ static void begin(void)
     zxv_gfx_target(&b);
     if (clip_on)
         zxv_gfx_clip(clip_x0, clip_y0, clip_x1, clip_y1);
+    if (pat_on)                         /* only then: a ROM before ZX-V D110 has no patterns */
+        zxv_gfx_pattern(pat, pat_paper);
 }
 
-static void end(void) { zxv_gfx_target(0); }
+static void end(void)
+{
+    zxv_gfx_target(0);
+    if (pat_on)
+        zxv_gfx_pattern(0, 0);
+}
 
 /* --- Modes and pages ------------------------------------------------------------- */
 
@@ -111,6 +120,7 @@ void zxb_zxv_mode(int mode, int w, int h)
         }
     REG8(ZXV_V_REMAP) = 0;
     clip_on = 0;
+    pat_on = 0;
     for (int p = 1; p >= 0; p--) {
         select_page(p);
         clear_page(p);
@@ -352,6 +362,52 @@ void zxb_zxv_poly(int c, const int32_t *xy)
     else
         zxv_gfx_poly(p, n, c);
     end();
+}
+
+/* The patterns of PATTERN n, from 1 on, as in the BASIC of ZX-V (bit 7: the
+ * pixel on the left) */
+static const uint8_t patterns[][8] = {
+    { 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55 },     /* 1: chessboard, a half */
+    { 0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x88, 0x22 },     /* 2: a quarter */
+    { 0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00 },     /* 3: an eighth */
+    { 0x77, 0xDD, 0x77, 0xDD, 0x77, 0xDD, 0x77, 0xDD },     /* 4: three quarters */
+    { 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00 },     /* 5: horizontal stripes */
+    { 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA },     /* 6: vertical stripes */
+    { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80 },     /* 7: diagonal going up */
+    { 0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01 },     /* 8: diagonal going down */
+    { 0xFF, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80 },     /* 9: grid */
+    { 0xFF, 0x80, 0x80, 0x80, 0xFF, 0x08, 0x08, 0x08 },     /* 10: bricks */
+    { 0x81, 0x42, 0x24, 0x18, 0x18, 0x24, 0x42, 0x81 },     /* 11: diamonds */
+};
+
+#define N_PATTERNS ((int)(sizeof(patterns) / sizeof(patterns[0])))
+
+static void pattern_paper(int p)
+{
+    if (p < -1 || p > 15)
+        zxb_ERROR(ERR_COLOUR);
+    pat_paper = p;
+}
+
+/* PATTERN n, p: BOX, DISC and POLY draw with pattern n (0: none) and paper p
+ * (-1: nothing where the pattern has a 0) */
+void zxb_zxv_pattern(int n, int p)
+{
+    range(n, 0, N_PATTERNS);
+    pattern_paper(p);
+    pat_on = n != 0;
+    if (pat_on)
+        for (int i = 0; i < 8; i++)
+            pat[i] = patterns[n - 1][i];
+}
+
+/* PATTERNBITS r0, ..., r7, p: a pattern of your own, a byte a row */
+void zxb_zxv_pattern_bits(const int32_t *rows, int p)
+{
+    pattern_paper(p);
+    for (int i = 0; i < 8; i++)
+        pat[i] = (uint8_t)rows[i];
+    pat_on = 1;
 }
 
 /* CLIP x, y, w, h: the engine only draws there; with w < 0, everywhere */

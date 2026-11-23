@@ -14,6 +14,7 @@
 #include "zxv.h"
 
 #define ZXV_TRANSPARENT     8
+#define ZXV_CLEAR           (-1)        /* un papel o un color de fuera que no se pinta */
 
 /* Bitmap: una pantalla, una hoja de sprites o un buffer. */
 typedef struct {
@@ -57,10 +58,20 @@ typedef struct {
     uint8_t log2size;       /* lado = 2^log2size (de 1 a 10) */
     uint8_t wrap;           /* 1: se repite; 0: fuera se ve 'out' */
     uint8_t out;
-    uint8_t reserved;
+    uint8_t flags;          /* ZXV_M7_TRANSPARENT (antes 'reserved', a 0) */
 } zxv_m7tex;
 
+#define ZXV_M7_TRANSPARENT  0x01u       /* el 8 (también 'out') no se dibuja */
+
 typedef struct { int32_t u, v, du, dv; } zxv_m7line;   /* coma fija 16.16 */
+
+/* Para m7_affine: girar y ampliar un plano, como la matriz de la SNES. */
+typedef struct {            /* coma fija 16.16 */
+    int32_t x, y;           /* el punto del plano que va en el centro */
+    int32_t angle;          /* 0x10000 = una vuelta, en el sentido del reloj */
+    int32_t zoom_x, zoom_y; /* aumento en cada eje del plano: 0x10000 = 1 */
+    int16_t cx, cy;         /* el centro, en el destino (enteros) */
+} zxv_m7aff;
 
 typedef struct {            /* coma fija 16.16 */
     int32_t x, y;           /* posición sobre la textura */
@@ -99,6 +110,14 @@ static inline void zxv_m7_draw(const zxv_m7tex *t, const zxv_m7line *l, int y, i
 { ZXV_API_FN(ZXV_API_M7_DRAW, void (*)(const zxv_m7tex *, const zxv_m7line *, int, int))(t, l, y, n); }
 static inline void zxv_m7_camera(zxv_m7line *l, int n, const zxv_m7cam *c)
 { ZXV_API_FN(ZXV_API_M7_CAMERA, void (*)(zxv_m7line *, int, const zxv_m7cam *))(l, n, c); }
+/* Como m7_draw, con un mapa de tiles como plano (sus espejos y su 8
+ * transparente; ZXV_MAP_WRAP: se repite). 'out': el color de fuera de un
+ * mapa que no se repite, o ZXV_CLEAR. */
+static inline void zxv_m7_draw_map(const zxv_tilemap *m, const zxv_m7line *l, int y, int n, int out)
+{ ZXV_API_FN(ZXV_API_M7_DRAW_MAP, void (*)(const zxv_tilemap *, const zxv_m7line *, int, int, int))(m, l, y, n, out); }
+/* Las líneas de un plano girado y ampliado (para m7_draw y m7_draw_map). */
+static inline void zxv_m7_affine(zxv_m7line *l, int n, const zxv_m7aff *a)
+{ ZXV_API_FN(ZXV_API_M7_AFFINE, void (*)(zxv_m7line *, int, const zxv_m7aff *))(l, n, a); }
 static inline void zxv_gfx_line(int x0, int y0, int x1, int y1, int c)
 { ZXV_API_FN(ZXV_API_GFX_LINE, void (*)(int, int, int, int, int))(x0, y0, x1, y1, c); }
 static inline void zxv_gfx_rect(int x, int y, int w, int h, int c)
@@ -109,6 +128,12 @@ static inline void zxv_gfx_poly(const int16_t *p, int n, int c)
 { ZXV_API_FN(ZXV_API_GFX_POLY, void (*)(const int16_t *, int, int))(p, n, c); }
 static inline void zxv_gfx_circle(int x, int y, int r, int c, int fill)
 { ZXV_API_FN(ZXV_API_GFX_CIRCLE, void (*)(int, int, int, int, int))(x, y, r, c, fill); }
+/* Trama de 8 x 8 para las figuras (línea, rectángulo, triángulo, polígono y
+ * círculo): los bits a 1 se pintan con el color de la figura y los a 0 con
+ * 'paper' (0-15), o no se tocan con ZXV_CLEAR. pat[fila], bit 7 = el
+ * píxel de la izquierda; anclada al destino. NULL: color liso. */
+static inline void zxv_gfx_pattern(const uint8_t *pat, int paper)
+{ ZXV_API_FN(ZXV_API_GFX_PATTERN, void (*)(const uint8_t *, int))(pat, paper); }
 #endif
 
 #endif /* ZXV_GFX_H */

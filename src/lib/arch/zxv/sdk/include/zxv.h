@@ -453,6 +453,9 @@
 #define ZXV_API_TEXT_COLORS     53
 #define ZXV_API_TEXT_AT         54
 #define ZXV_API_BEEPER_EVENT_AT 55
+#define ZXV_API_GFX_PATTERN     56      /* desde la versión 0.2 */
+#define ZXV_API_M7_DRAW_MAP     57      /* desde la versión 0.2 */
+#define ZXV_API_M7_AFFINE       58      /* desde la versión 0.2 */
 
 /* --- Reloj (spec §7.9) --------------------------------------------------- */
 #define ZXV_CLOCK_SIZE          8
