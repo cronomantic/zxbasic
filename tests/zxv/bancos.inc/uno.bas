@@ -1,5 +1,15 @@
 ' Banco "uno" (zona 0): llamadas con parámetros, recursión dentro del banco,
 ' un Float, una cadena, un FASTCALL en ensamblador y una llamada a otra zona.
+' Declaradas en el fichero del banco, pero residentes: las ve todo el
+' programa y no vuelven a empezar cuando el banco se recarga.
+DIM marcador AS INTEGER = 100
+DIM ultimo AS STRING
+
+SUB apunta(n AS INTEGER)
+    marcador = marcador + n
+    ultimo = "uno"
+END SUB
+
 FUNCTION suma(a AS INTEGER, b AS INTEGER) AS INTEGER
     RETURN a + b
 END FUNCTION

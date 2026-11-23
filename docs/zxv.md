@@ -203,9 +203,14 @@ file, and only the current one takes memory.
 python3 zxbc.py --arch=zxv --code-bank valley=valley.bas --code-bank space=space.bas game.bas
 ```
 
-- Only the functions go to the bank. The variables of the file (the `DIM`s
-  outside the functions), the strings and the libraries (`zxv.bas`...) stay in
-  the resident part, so they keep their values when another bank is loaded.
+- **It is one program, not several chained ones.** Everything is compiled
+  and linked together and only the code of the functions goes to the bank.
+  The global variables (also the `DIM`s outside the functions in the bank's
+  file), the strings and the libraries (`zxv.bas`...) stay in the resident
+  part: every bank and the main program read and change them, and they keep
+  their values when another bank is loaded. That is how lives or points go
+  from one stage to the next. Local variables and parameters live on the
+  stack while the function runs, as always.
 - Calls between functions of the same bank go straight to them (recursion
   too). A call to another bank goes through its bridge, which loads it.
 - **A bank in use is not replaced:** if a function of bank `a` calls (directly
@@ -221,7 +226,8 @@ python3 zxbc.py --arch=zxv --code-bank valley=valley.bas --code-bank space=space
   first call stops the program with "the ROM has no banks".
 
 The example `examples/zxbasic/fases` of ZX-V has two stages, each one in its
-bank. `tests/zxv/bancos.bas` and `bancosuso.bas` test them.
+bank. `tests/zxv/bancos.bas` (also variables declared in a bank's file and
+shared by two banks) and `bancosuso.bas` test them.
 
 ## Libraries
 

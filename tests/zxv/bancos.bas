@@ -17,4 +17,10 @@ cuenta()
 PRINT contador
 llamaTres()
 PRINT lista()
+apunta(5)
+apuntaDos()
+apunta(10)
+PRINT marcador; " "; ultimo
+apuntaDos()
+PRINT marcador; " "; ultimo
 PRINT "fin"

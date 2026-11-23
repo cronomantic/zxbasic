@@ -3,6 +3,11 @@ FUNCTION resta(a AS INTEGER, b AS INTEGER) AS INTEGER
     RETURN a - b
 END FUNCTION
 
+SUB apuntaDos()
+    marcador = marcador + 1
+    ultimo = ultimo + " dos"
+END SUB
+
 SUB cuenta()
     contador = contador + 1
 END SUB
