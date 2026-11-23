@@ -254,6 +254,8 @@ with the same names and arguments (see its manual):
 | `PALETTE c, r, g, b`, `PALETTERESET` | The palette: colour `c` (0-15) with any red, green and blue (0-255 each; 215 is the level of the standard colours and 255 the bright one), and the standard colours again |
 | `GRAB n, x, y, w, h[, t]`, `GRABSTR n, w, a$`, `SPRITE n, x, y[, f[, c$[, w, h]]]`, `HIT(a, ax, ay, b, bx, by)` | Sprites from the screen or from a string of hex digits, drawn mirrored, with other colours or scaled, and pixel-exact collisions |
 | `BOX c, x, y, w, h`, `DISC c, x, y, r`, `POLY c, x1, y1, ...`, `CLIP [x, y, w, h]`, `PIXEL(x, y)` | Filled shapes, clipping, and the colour of any pixel |
+| `TILE s, n, x, y[, w, h[, t]]`, `TILESTR s, n, a$`, `MAPDIM m, w, h[, s[, r]]`, `MAPPOKE m, x, y, v`, `MAPPOKESTR m, x, y, a$`, `MAP m[, mx, my[, x, y, w, h[, f]]]`, `CELL(m, x, y)` | Tile maps as in the ZX-V BASIC (`MAP DIM`, `MAP POKE` there): two sets of tiles of 8 x 8 and 16 x 16 (0-4095) from the page or from strings, 16 maps with mirrored, transparent and priority cells, drawn with scroll from any pixel, and what is in a cell |
+| `TEXTURE n, x, y, s[, c[, t]]`, `FLOOR n, x, y, height, angle, horizon[, focal]`, `FLOORMAP m, ...`, `ROTATE n, x, y[, angle[, zoom[, cx, cy]]]`, `ROTATEMAP m, ...` | Mode 7: four textures (with a transparent colour), a floor in perspective and a plane turned and zoomed, with a texture or with a tile map, as `FLOOR [MAP]` and `ROTATE [MAP]` there. The positions and angles (radians) are `Fixed`. `FLOORMAP`, `ROTATE` and `ROTATEMAP` need a ZX-V ROM with them (decision D110) |
 | `PATTERN [n[, p]]`, `PATTERNBITS r0, ..., r7[, p]` | A two-colour pattern for `BOX`, `DISC` and `POLY`: one of the 11 of the ZX-V BASIC, or 8 bytes of your own (bit 7, the pixel on the left), with paper `p` (0-15), or nothing under the 0s (`p` = -1, the default); `PATTERN` alone, plain colour again. Needs a ZX-V ROM with patterns (decision D110) |
 | `KEY(n)`, `JOY(n)`, `SOUND r, v`, `TIME` | Keys held down, joysticks, the registers of the two AY chips, and the frame counter |
 | `MUSICLOAD f$`, `MUSICPLAY`, `MUSICSTOP`, `MUSICPAUSE`, `MUSICCONTINUE`, `MUSIC` | Music, in the background while the program goes on: ZX-V's own `.zxm` (the AY chips and the sample channels), a tracker module (a PT3 from `zxv-tracker` or Vortex Tracker, a TurboSound, PT2, STC, ASC or PSG) or a VGM of AY chips (`.vgm`, or compressed: `.vgz`) |
@@ -317,9 +319,8 @@ BASIC names it by number.
 
 `tests/zxv/sdkinput.bas`, `sdksave.bas`, `sdkfade.bas`, `sdkfont.bas`,
 `sdkinflate.bas` and `sdkmath.bas` test them. The moving through tile maps,
-the objects on the mode 7 floor and the 3D of the SDK are not here yet: the
-first two need the maps and the textures of the ZX-V BASIC, and the 3D its
-models in BASIC.
+the objects on the mode 7 floor and the 3D of the SDK are not here yet (the
+3D needs its models in BASIC).
 
 ## Licence
 

@@ -19,6 +19,12 @@
 '    and PALETTE only change table 0 (no #t), and REMAP alone is REMAPRESET
 '    and PALETTE alone PALETTERESET.
 '  - POLY takes up to 8 points.
+'  - The tile maps: TILESTR s, n, a$ (TILE s, n, a$ there), MAPDIM and
+'    MAPPOKE (MAP DIM and MAP POKE), MAPPOKESTR m, x, y, a$ (MAP POKE with a
+'    string), and CELL is a function: CELL(m, x, y). FLOORMAP and ROTATEMAP
+'    are FLOOR MAP and ROTATE MAP. The tiles, maps and textures are in the
+'    heap of the program and go with it (the ZX-V BASIC keeps them in its
+'    store between programs); no SAVE or LOAD ... GRAPHICS.
 '  - SCREEN can not be used with screen.bas (its SCREEN$ is also screen).
 '  - The music and the effects: MUSICLOAD f$ and SFXLOAD f$ (LOAD f$ MUSIC
 '    and SFX there), MUSICPLAY, MUSICSTOP, MUSICPAUSE and MUSICCONTINUE, and
@@ -438,6 +444,185 @@ function SAMPLEPLAYING as UByte
     zxb_ccall zxb_sample_on
     end asm
 end function
+
+REM TILE s, n, x, y[, w, h[, t]]: tile n (0-4095) of the set of side s (8 or
+REM 16) is the s x s square of the drawing page at (x, y); with w and h, that
+REM rectangle cut in tiles numbered from n row by row. Colour t becomes
+REM transparent. A set grows when a higher tile is defined (the new ones,
+REM black)
+sub TILE(s as UByte, n as UInteger, x as Integer, y as Integer, w as UInteger = 0, h as UInteger = 0, t as Integer = -1)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    lw a4, 24(s0)
+    lw a5, 28(s0)
+    lw a6, 32(s0)
+    zxb_ccall zxb_tile
+    end asm
+end sub
+
+REM TILESTR s, n, a$: tiles from a string, s x s characters each (the hex
+REM digits are colours, anything else transparent); a longer one defines
+REM the next tiles
+sub TILESTR(s as UByte, n as UInteger, ByVal a as String)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    zxb_ccall zxb_tile_str
+    end asm
+end sub
+
+REM MAPDIM m, w, h[, s[, r]]: map m (0-15) of w x h cells, all tile 0, of
+REM tiles of side s (8 or 16); with r = 1 it repeats in both directions
+sub MAPDIM(m as UByte, w as UInteger, h as UInteger, s as UByte = 8, r as UByte = 0)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    lw a4, 24(s0)
+    zxb_ccall zxb_map_dim
+    end asm
+end sub
+
+REM MAPPOKE m, x, y, v: cell (x, y) is v: the tile, + 4096 mirrored left to
+REM right, + 8192 upside down, + 16384 its 8 transparent, + 32768 priority
+sub MAPPOKE(m as UByte, x as UInteger, y as UInteger, v as UInteger)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    zxb_ccall zxb_map_poke
+    end asm
+end sub
+
+REM MAPPOKESTR m, x, y, a$: the cells from (x, y) to the right, the code of
+REM each character as the tile: "  ##.." uses tiles 32, 35 and 46
+sub MAPPOKESTR(m as UByte, x as UInteger, y as UInteger, ByVal a as String)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    zxb_ccall zxb_map_poke_str
+    end asm
+end sub
+
+REM MAP m[, mx, my[, x, y, w, h[, f]]]: draws map m from its pixel (mx, my) on
+REM the whole page or the rectangle (x, y, w, h); f: 0 every cell, 1 the ones
+REM without priority, 2 only the ones with it. All its tiles must exist
+sub MAP(m as UByte, mx as Integer = 0, my as Integer = 0, x as Integer = 0, y as Integer = 0, w as Integer = -1, h as Integer = -1, f as UByte = 0)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    lw a4, 24(s0)
+    lw a5, 28(s0)
+    lw a6, 32(s0)
+    lw a7, 36(s0)
+    zxb_ccall zxb_map_draw
+    end asm
+end sub
+
+REM CELL(m, x, y): the cell at column x and row y of map m, with its bits;
+REM out of a map that does not repeat, 0
+function CELL(m as UByte, x as Integer, y as Integer) as UInteger
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    zxb_ccall zxb_cell
+    end asm
+end function
+
+REM TEXTURE n, x, y, s[, c[, t]]: texture n (0-3) for FLOOR and ROTATE is the
+REM s x s square (2, 4, 8... 256) of the page at (x, y). It repeats or, with
+REM colour c, outside it is that colour; colour t is transparent, and with
+REM c = t, the outside too
+sub TEXTURE(n as UByte, x as Integer, y as Integer, s as UInteger, c as Integer = -1, t as Integer = -1)
+    asm
+    lw a0, 8(s0)
+    lw a1, 12(s0)
+    lw a2, 16(s0)
+    lw a3, 20(s0)
+    lw a4, 24(s0)
+    lw a5, 28(s0)
+    zxb_ccall zxb_texture
+    end asm
+end sub
+
+REM FLOOR n, x, y, height, angle, horizon[, focal]: a floor in perspective
+REM with texture n (the "mode 7"), seen from its point (x, y) at that
+REM height, looking at angle (radians; 0 towards the growing x), with the
+REM horizon at that row of the page and that focal length (0: half the
+REM page; smaller, wider)
+sub FLOOR(n as UByte, x as Fixed, y as Fixed, height as Fixed, angle as Fixed, horizon as Integer, focal as Fixed = 0)
+    asm
+    li a0, 0
+    lw a1, 8(s0)
+    lw a2, 12(s0)
+    lw a3, 16(s0)
+    lw a4, 20(s0)
+    lw a5, 24(s0)
+    lw a6, 28(s0)
+    lw a7, 32(s0)
+    zxb_ccall zxb_floor
+    end asm
+end sub
+
+REM FLOORMAP m, x, y, height, angle, horizon[, focal]: the same with tile
+REM map m (what is out of a map that does not repeat is not drawn)
+sub FLOORMAP(m as UByte, x as Fixed, y as Fixed, height as Fixed, angle as Fixed, horizon as Integer, focal as Fixed = 0)
+    asm
+    li a0, 1
+    lw a1, 8(s0)
+    lw a2, 12(s0)
+    lw a3, 16(s0)
+    lw a4, 20(s0)
+    lw a5, 24(s0)
+    lw a6, 28(s0)
+    lw a7, 32(s0)
+    zxb_ccall zxb_floor
+    end asm
+end sub
+
+REM ROTATE n, x, y[, angle[, zoom[, cx, cy]]]: texture n turned angle radians
+REM clockwise and zoom times bigger around its point (x, y), which is seen
+REM at (cx, cy) of the page (by default its centre), on the whole page or
+REM the CLIP
+sub ROTATE(n as UByte, x as Fixed, y as Fixed, angle as Fixed = 0, zoom as Fixed = 1, cx as Integer = -32768, cy as Integer = -32768)
+    asm
+    li a0, 0
+    lw a1, 8(s0)
+    lw a2, 12(s0)
+    lw a3, 16(s0)
+    lw a4, 20(s0)
+    lw a5, 24(s0)
+    lw a6, 28(s0)
+    lw a7, 32(s0)
+    zxb_ccall zxb_rotate
+    end asm
+end sub
+
+REM ROTATEMAP m, x, y[, angle[, zoom[, cx, cy]]]: the same with tile map m
+sub ROTATEMAP(m as UByte, x as Fixed, y as Fixed, angle as Fixed = 0, zoom as Fixed = 1, cx as Integer = -32768, cy as Integer = -32768)
+    asm
+    li a0, 1
+    lw a1, 8(s0)
+    lw a2, 12(s0)
+    lw a3, 16(s0)
+    lw a4, 20(s0)
+    lw a5, 24(s0)
+    lw a6, 28(s0)
+    lw a7, 32(s0)
+    zxb_ccall zxb_rotate
+    end asm
+end sub
 
 #pragma pop(case_insensitive)
 
