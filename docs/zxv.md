@@ -80,6 +80,13 @@ values first and then the stack parameters, with the ilp32 ABI.
 `ASM` blocks are RISC-V assembler (GNU syntax). In a function, the parameters
 are at `8(s0)`, `12(s0)`... (4 bytes each, 8 a `Float`), and a function that ends
 with an `ASM` block returns what it leaves in `a0` (`a0` and `a1` for a `Float`).
+A `FASTCALL` function gets its first parameter in `a0` (`a0` and `a1` a
+`Float`; a `String`, its address in `a0`), the others in the stack above
+the return address (at `0(sp)`), and has no frame (`s0` is the caller's). So,
+as on the Z80, `FASTCALL` is for functions written in `ASM`: BASIC code in
+them that reads a parameter gets garbage, whatever its type, with or without
+banks, and the compiler does not warn (neither does it for the Z80). Write
+those functions without `FASTCALL`.
 `zxb_ccall function` calls a C function of the runtime (it aligns the stack, as
 the ABI requires): that is how the libraries are written. `USR address` calls
 RISC-V code at that address and gives what it leaves in `a0`. Z80 machine code
@@ -201,8 +208,6 @@ the text comes out as always.
 Not yet:
 
 - The libraries that are not in the list below.
-- `FASTCALL` functions with parameters written in BASIC (their first parameter
-  comes in `a0`, for `ASM` blocks).
 - Optimization of the generated code (the `-O` levels only change the front end).
 
 ## Loading screen
@@ -355,6 +360,15 @@ python3 zxbc.py --arch=zxv --code-bank valley=valley.bas --code-bank space=space
   the code that is running; instead the program stops with "Bank a in use:
   cannot load b in its region". Put banks that call each other in different
   regions (`b@1=b.bas`).
+- **At most 32 bank calls one inside another.** What counts is each call that
+  goes through a bridge and has not returned yet: a call to a function of a
+  bank from the resident part or from another bank. Calls inside the same
+  bank go straight and do not count (a recursive function of a bank can go as
+  deep as the stack allows), nor do calls to the resident part. A recursion
+  that goes from one bank to another (`a` calls `b`, which calls `a`...)
+  counts every crossing, and so does a resident function called from a bank
+  that calls the bank again. The call number 33 stops the program with "Too
+  many nested bank calls".
 - Loading a bank takes a few milliseconds from the card or `ROM:`, more from
   `EXT:`: the first call of each stage, behind its title, is a good moment.
 - Inside a function of a bank, an `ASM` block must not change the section
@@ -3127,11 +3141,13 @@ SCORELOAD(f$ [, version])   ' version UInteger; gives Long
 ```
 
 Loads the table as [LOADDATA](#loaddata) does; if it fails, the table does
-not change.
+not change. What it reads must also be a table: 1 to 10 places and names of
+up to 7 characters; a file of the right size with anything else (made with
+`SAVEDATA`, or by hand) gives `SAVEDAMAGED`, as a damaged one.
 
 **Parameters:** `f$`; `version`, 1 if left out.
 
-**Returns:** as LOADDATA.
+**Returns:** as LOADDATA (and `SAVEDAMAGED` if it is no table).
 
 **Errors:** none (they are returned).
 
@@ -4083,7 +4099,10 @@ DRAW3D
 ```
 
 Draws all that was added since `BEGIN3D`, from back to front, on the
-drawing page, with the `CLIP`.
+drawing page, with the `CLIP`. It does not use the [PATTERN](#pattern) of
+the program (the shading has its own patterns): the faces come out the same
+with or without it, and the `PATTERN` is still there for the `BOX`, `DISC`,
+`POLY` and `FONTDRAW` that come after.
 
 **Errors:** none.
 

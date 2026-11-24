@@ -146,10 +146,12 @@ zstr zxb_key_name(int hid)
 
 #define SCORES_MAX 10
 
-static struct {
+typedef struct {
     uint32_t n;
     zxv_score t[SCORES_MAX];
-} scores = { 5, { { 0, { 0 } } } };
+} score_table;
+
+static score_table scores = { 5, { { 0, { 0 } } } };
 
 int zxb_save_data(zstr name, int version, uint32_t addr, uint32_t len)
 {
@@ -204,9 +206,28 @@ int zxb_score_save(zstr name, int version)
     return zxb_save_data(name, version, (uint32_t)(uintptr_t)&scores, sizeof scores);
 }
 
+/* The file is read apart and only goes to the table if it is right: 1 to
+ * SCORES_MAX places and every name with its 0. A file made by hand with
+ * other values would make SCOREADD and SCORENAME go out of the table; it is
+ * damaged, as one with a wrong CRC, and the table does not change (neither
+ * if the reading fails half way). */
 int zxb_score_load(zstr name, int version)
 {
-    return zxb_load_data(name, version, (uint32_t)(uintptr_t)&scores, sizeof scores);
+    score_table t;
+    int r = zxb_load_data(name, version, (uint32_t)(uintptr_t)&t, sizeof t);
+    if (r < 0)
+        return r;
+    if (t.n < 1 || t.n > SCORES_MAX)
+        return ZXV_SAVE_E_DAMAGED;
+    for (int i = 0; i < SCORES_MAX; i++) {
+        int k = 0;
+        while (k < (int)sizeof t.t[i].name && t.t[i].name[k])
+            k++;
+        if (k == (int)sizeof t.t[i].name)
+            return ZXV_SAVE_E_DAMAGED;
+    }
+    scores = t;
+    return r;
 }
 
 /* --- zxvfade.bas ------------------------------------------------------------------ */
@@ -588,9 +609,9 @@ int zxb_add3d(int m, int32_t x, int32_t y, int32_t z, int32_t yaw, int32_t pitch
 
 void zxb_draw3d(void)
 {
-    zxb_gfx_begin();
+    zxb_gfx_begin_plain();
     zxv_3d_draw();
-    zxb_gfx_end();
+    zxb_gfx_end_plain();
 }
 
 int zxb_project3d(int32_t x, int32_t y, int32_t z)

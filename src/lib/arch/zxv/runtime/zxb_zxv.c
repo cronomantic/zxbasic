@@ -56,15 +56,38 @@ void zxb_vram_wait(void)
 
 /* The engine draws on the drawing page, with the CLIP rectangle and the
  * PATTERN (also for zxb_sdklib.c: zxb_gfx_begin and zxb_gfx_end) */
-void zxb_gfx_begin(void)
+static void gfx_target(void)
 {
     zxb_vram_wait();
     zxv_bitmap b = { page_pix(draw_page), (uint16_t)(width / 2), (uint16_t)width, (uint16_t)height, 0 };
     zxv_gfx_target(&b);
     if (clip_on)
         zxv_gfx_clip(clip_x0, clip_y0, clip_x1, clip_y1);
+}
+
+void zxb_gfx_begin(void)
+{
+    gfx_target();
     if (pat_on)                         /* only then: a ROM before ZX-V D110 has no patterns */
         zxv_gfx_pattern(pat, pat_paper);
+}
+
+/* Without the PATTERN of the program (docs: it is for BOX, DISC, POLY and
+ * FONTDRAW): DRAW3D shades with its own patterns, and the faces it draws
+ * plain must not take the program's. A ROM without patterns ignores the
+ * call (api_unimplemented). The end takes away whatever pattern the 3D
+ * left, so the next BOX without PATTERN is plain; the PATTERN of the
+ * program is set again by the next zxb_gfx_begin. */
+void zxb_gfx_begin_plain(void)
+{
+    gfx_target();
+    zxv_gfx_pattern(0, 0);
+}
+
+void zxb_gfx_end_plain(void)
+{
+    zxv_gfx_target(0);
+    zxv_gfx_pattern(0, 0);
 }
 
 zxv_bitmap zxb_page_bitmap(void)

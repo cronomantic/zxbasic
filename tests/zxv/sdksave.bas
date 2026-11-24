@@ -17,3 +17,19 @@ PRINT SCORESAVE("tabla.sav")
 SCORECLEAR 3
 PRINT SCORE(0)
 PRINT SCORELOAD("tabla.sav"); " "; SCORE(0); " "; SCORENAME(1)
+REM A table made by hand is damaged (and the table does not change) if it
+REM has not 1 to 10 places or a name has no 0 in its 8 bytes
+DIM h(123) AS UByte
+LET h(0) = 200
+PRINT SAVEDATA("mano.sav", 1, @h(0), 124); " "; SCORELOAD("mano.sav"); " "; SCORE(0)
+LET h(0) = 0
+PRINT SAVEDATA("mano.sav", 1, @h(0), 124); " "; SCORELOAD("mano.sav"); " "; SCORE(0)
+LET h(0) = 2: LET h(4) = 7
+FOR i = 8 TO 15: LET h(i) = 65: NEXT i
+PRINT SAVEDATA("mano.sav", 1, @h(0), 124); " "; SCORELOAD("mano.sav"); " "; SCORE(0)
+LET h(15) = 0
+FOR i = 116 TO 123: LET h(i) = 66: NEXT i
+PRINT SAVEDATA("mano.sav", 1, @h(0), 124); " "; SCORELOAD("mano.sav"); " "; SCORE(0)
+LET h(116) = 0
+PRINT SAVEDATA("mano.sav", 1, @h(0), 124); " "; SCORELOAD("mano.sav"); " "; SCORE(0); " "; SCORENAME(0)
+PRINT SCOREADD(950, "EVA"); " "; SCOREADD(1, "FE"); " "; SCORENAME(1)

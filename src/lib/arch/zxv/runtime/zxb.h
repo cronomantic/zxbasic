@@ -34,6 +34,10 @@ void zxb_mem_init(void);
  * (zxb_zxv.c), between these two; and that page as a bitmap */
 void zxb_gfx_begin(void);
 void zxb_gfx_end(void);
+/* The same with CLIP but without the PATTERN of the program, for what sets
+ * its own patterns (DRAW3D: its shading); the end takes away any pattern */
+void zxb_gfx_begin_plain(void);
+void zxb_gfx_end_plain(void);
 zxv_bitmap zxb_page_bitmap(void);
 
 /* The tile maps and the camera of the last FLOOR (zxb_maps.c) */
