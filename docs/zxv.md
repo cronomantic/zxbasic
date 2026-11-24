@@ -85,8 +85,9 @@ A `FASTCALL` function gets its first parameter in `a0` (`a0` and `a1` a
 the return address (at `0(sp)`), and has no frame (`s0` is the caller's). So,
 as on the Z80, `FASTCALL` is for functions written in `ASM`: BASIC code in
 them that reads a parameter gets garbage, whatever its type, with or without
-banks, and the compiler does not warn (neither does it for the Z80). Write
-those functions without `FASTCALL`.
+banks. Since v1.19.0-zxv.7 the compiler warns about it on zxv ("... is
+FASTCALL: its parameters arrive in registers"; it does not for the Z80).
+Write those functions without `FASTCALL`, or read the parameters in `ASM`.
 `zxb_ccall function` calls a C function of the runtime (it aligns the stack, as
 the ABI requires): that is how the libraries are written. `USR address` calls
 RISC-V code at that address and gives what it leaves in `a0`. Z80 machine code

@@ -10,8 +10,9 @@
 import struct
 
 import src.api.global_ as gl
+from src.api import errmsg
 from src.api.config import OPTIONS
-from src.api.constants import TYPE
+from src.api.constants import CLASS, CONVENTION, SCOPE, TYPE
 from src.arch.z80.backend.runtime import Labels as RuntimeLabel
 from src.arch.z80.visitor.function_translator import FunctionTranslator as Z80FunctionTranslator
 from src.arch.z80.visitor.translator import Translator as Z80Translator
@@ -69,8 +70,39 @@ class Translator(ZxvTranslation, Z80Translator):
     pass
 
 
+def _reads_parameter(body) -> int:
+    """The line of the first BASIC statement of body that uses a parameter of its function, or 0"""
+    stack = list(body)
+    seen = set()
+    while stack:
+        n = stack.pop()
+        # The tree has cycles (RETURN points to its function, a call to the function it calls):
+        # each node once, and not into other functions
+        if n is None or id(n) in seen or getattr(n, "token", None) in ("ASM", "FUNCTION", "FUNCDECL", "SUB"):
+            continue
+        seen.add(id(n))
+        if getattr(n, "scope", None) == SCOPE.parameter and getattr(n, "token", None) in ("VAR", "VARARRAY", "ARRAY"):
+            return getattr(n, "lineno", 0) or 1
+        stack.extend(getattr(n, "children", ()) or ())
+    return 0
+
+
 class FunctionTranslator(ZxvTranslation, Z80FunctionTranslator):
     def visit_FUNCTION(self, node):
+        # FASTCALL with a BASIC body that reads a parameter: the parameter arrives in a0 (a0 and a1
+        # for a Float), not in the stack frame the BASIC reads, so it gets garbage, as on the Z80
+        # (where the compiler says nothing). Only on zxv, a warning
+        if node.convention == CONVENTION.fastcall:
+            line = _reads_parameter(node.ref.body)
+            if line:
+                kind = "SUB" if node.class_ == CLASS.sub else "FUNCTION"
+                errmsg.warning(
+                    line,
+                    f"{kind} '{node.name}' is FASTCALL: its parameters arrive in registers (a0, a1), "
+                    "so BASIC code that reads them gets wrong values; read them in ASM or drop FASTCALL",
+                    fname=getattr(node, "filename", None),
+                )
+
         # A function of a code bank (zxbc --code-bank, banks.py) goes in the section of its bank
         from src.arch.zxv import driver
 
