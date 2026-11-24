@@ -1,5 +1,5 @@
 /*
- * zxv.h - Direcciones y constantes de la máquina ZX-V (spec v0.1).
+ * zxv.h - Direcciones y constantes de la máquina ZX-V (spec v0.2).
  *
  * Única fuente de verdad compartida por la ROM, el SDK y el emulador.
  * Solo contiene #define, así que sirve tanto en C (anfitrión y RISC-V) como

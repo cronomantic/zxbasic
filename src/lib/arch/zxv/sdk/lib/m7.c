@@ -22,7 +22,7 @@ int zxv_m7_floor_at(const zxv_m7cam *cam, int width, int sx, int sy, zxv_fix *px
     /* Exactamente como m7_camera, y luego el píxel sx de su línea. */
     int32_t ca = zxv_cos(cam->angle), sa = zxv_sin(cam->angle);
     int64_t z = (((int64_t)cam->height * cam->focal) >> 16) / dy;
-    int64_t step = (z << 16) / cam->focal;
+    int64_t step = z * 65536 / cam->focal;
     int64_t fx = (z * ca) >> 16, fy = (z * sa) >> 16;
     int64_t rx = -((step * sa) >> 16), ry = (step * ca) >> 16;
     uint32_t u = (uint32_t)(int32_t)(cam->x + fx - (width / 2) * rx);
@@ -50,7 +50,7 @@ int zxv_m7_project(const zxv_m7cam *cam, int width, zxv_fix px, zxv_fix py, zxv_
     /* Al más cercano: la línea es horizonte + (altura - h)·focal / z. */
     int64_t ly = ((((int64_t)cam->height - h) * f) / z + 0x8000) >> 16;
     int64_t lx = ((lat * f) / z + 0x8000) >> 16;
-    int64_t sc = (f << 16) / z;
+    int64_t sc = f * 65536 / z;
     if (ly > 0x3FFFFFFF || ly < -0x3FFFFFFF || lx > 0x3FFFFFFF || lx < -0x3FFFFFFF || sc > 0x7FFFFFFF)
         return 0;
     p->x = width / 2 + (int32_t)lx;

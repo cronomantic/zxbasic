@@ -90,9 +90,9 @@ int32_t zxv_atan2(int32_t y, int32_t x)
         m >>= 1;
     }
     while (m < (1LL << 27)) {
-        X <<= 1;
-        Y <<= 1;
-        m <<= 1;
+        X *= 2;                                 /* no <<: Y puede ser negativa */
+        Y *= 2;
+        m *= 2;
     }
     int32_t cx = (int32_t)X, cy = (int32_t)Y;
     for (int i = 0; i < 22; i++) {

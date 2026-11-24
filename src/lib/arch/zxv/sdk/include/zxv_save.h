@@ -36,7 +36,11 @@ int zxv_save(const char *name, uint16_t version, const void *data, uint32_t len)
 
 /* Lee en data lo que guardó zxv_save con la misma versión y len. ZXV_OK, o
  * un error negativo: ZXV_E_NOENT (no hay), ZXV_E_NOCARD, ZXV_SAVE_E_DAMAGED,
- * ZXV_SAVE_E_VERSION... Si falla, data no cambia. */
+ * ZXV_SAVE_E_VERSION... Si falla, data no cambia: lo comprueba antes de
+ * tocarlo. Con más de 256 bytes (no hay sitio para una copia) lo lee otra
+ * vez en data, comprobándolo, y si la tarjeta falla justo entonces (se saca
+ * en ese momento) devuelve el error con data a medias: con cualquier error,
+ * los valores de siempre. */
 int zxv_load(const char *name, uint16_t version, void *data, uint32_t len);
 
 /* El CRC-32 (el de zip y PNG) de n bytes: el que usan estos ficheros. */

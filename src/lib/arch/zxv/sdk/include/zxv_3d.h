@@ -33,15 +33,16 @@
 #include "zxv_math.h"
 
 /* Lo que cabe en un frame (cambia con -D al compilar lib/3d.c): con estos,
- * unos 21 KB de memoria. */
+ * unos 29 KB de memoria. */
 #ifndef ZXV_3D_MAX_FACES
 #define ZXV_3D_MAX_FACES    400         /* caras que se ven, entre todos los objetos */
 #endif
 #ifndef ZXV_3D_MAX_VERTS
 #define ZXV_3D_MAX_VERTS    512         /* vértices de un modelo */
 #endif
-#define ZXV_3D_FACE_SIDES   32          /* lados de una cara, como mucho: recortada contra los 5
-                                         * planos de la vista no pasa de 37, y zxv_gfx_poly dibuja 64 */
+#define ZXV_3D_FACE_SIDES   32          /* lados de una cara, como mucho: convexa y recortada contra
+                                         * los 5 planos de la vista no pasa de 37 (zxv_gfx_poly dibuja
+                                         * 64); una no convexa se parte en triángulos */
 
 typedef struct {
     zxv_fix x, y, z;
@@ -61,7 +62,10 @@ typedef struct {
                                          * ordena por su vértice más cercano, así va después */
 
 /* Un modelo. faces: por cada cara, el número de vértices (3 a 32), su
- * material (ZXV_3D_MAT) y los índices de sus vértices; una cara tras otra. */
+ * material (ZXV_3D_MAT) y los índices de sus vértices; una cara tras otra.
+ * Una cara es plana y no se cruza consigo misma; puede ser no convexa (una
+ * L, una sierra): se parte en triángulos al dibujarla, cada frame (obj2c.py
+ * ya las da partidas). */
 typedef struct {
     const int16_t (*verts)[3];
     const uint16_t *faces;
@@ -72,8 +76,8 @@ typedef struct {
 typedef struct {
     zxv_vec3 pos;
     int32_t yaw, pitch, roll;
-    int32_t focal;                      /* distancia focal en píxeles (enteros): con 128 y una
-                                         * vista de 256, unos 90° de lado a lado */
+    int32_t focal;                      /* distancia focal en píxeles (enteros, hasta 32767): con
+                                         * 128 y una vista de 256, unos 90° de lado a lado */
     int16_t cx, cy;                     /* el centro de la vista en la pantalla */
     int16_t w, h;                       /* lo que mide la vista (para recortar) */
     zxv_fix near;                       /* más cerca no se dibuja (por defecto, 0.25) */

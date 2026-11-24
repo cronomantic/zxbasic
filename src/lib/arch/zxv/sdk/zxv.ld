@@ -13,14 +13,15 @@ MEMORY
 
 SECTIONS
 {
-    /* Lo de los bancos de código (zxvbank_*.o, de tools/zxvbanks.py) no va en
-     * la parte residente, sino en sus zonas (ZXVBANKS, abajo). */
+    /* Lo de los bancos de código no lo cogen estas reglas: tools/zxvbanks.py
+     * cambia el nombre de sus secciones (.zxvbank_in.BANCO.text...) y las
+     * pone en sus zonas (ZXVBANKS, abajo). */
     .text : {
         KEEP(*(.text.start))
-        *(EXCLUDE_FILE(*zxvbank_*.o) .text*)
+        *(.text*)
     } > URAM
-    .rodata : { *(EXCLUDE_FILE(*zxvbank_*.o) .rodata*) *(EXCLUDE_FILE(*zxvbank_*.o) .srodata*) } > URAM
-    .data : { *(EXCLUDE_FILE(*zxvbank_*.o) .data*) *(EXCLUDE_FILE(*zxvbank_*.o) .sdata*) . = ALIGN(4); } > URAM
+    .rodata : { *(.rodata*) *(.srodata*) } > URAM
+    .data : { *(.data*) *(.sdata*) . = ALIGN(4); } > URAM
     /* Las variables de hilo (el errno de picolibc): crt0.S pone tp en
      * __tls_base. .tdata va en la imagen; .tbss, a cero con el BSS, en su
      * propio sitio (el enlazador no le reserva memoria). */
@@ -45,8 +46,8 @@ SECTIONS
     } > VRAM1X
     .bss (NOLOAD) : {
         __bss_start = .;
-        *(EXCLUDE_FILE(*zxvbank_*.o) .bss*) *(EXCLUDE_FILE(*zxvbank_*.o) .sbss*)
-        *(EXCLUDE_FILE(*zxvbank_*.o) COMMON)
+        *(.bss*) *(.sbss*)
+        *(COMMON)
         . = ALIGN(4);
         __bss_end = .;
     } > URAM

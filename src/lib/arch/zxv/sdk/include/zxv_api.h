@@ -144,7 +144,7 @@ static inline int zxv_lang_set(uint32_t lang) { return ZXV_API_FN(ZXV_API_LANG_S
 
 /* Vuelve al BASIC: con 0, el informe 0 OK; con otro código, W con ese número. */
 static inline void zxv_exit_to_basic(int code) { ZXV_API_FN(ZXV_API_EXIT_TO_BASIC, void (*)(int))(code); }
-/* Vuelve al BASIC con el informe W y este texto (UTF-8, hasta 47 bytes), y el código si no es 0. */
+/* Vuelve al BASIC con el informe W y este texto (UTF-8, hasta 79 bytes; 47 en una ROM de la especificación 0.1), y el código si no es 0. */
 static inline void zxv_report_error(int code, const char *msg) { ZXV_API_FN(ZXV_API_REPORT_ERROR, void (*)(int, const char *))(code, msg); }
 
 /* --- Ratón (spec §6.1) ---------------------------------------------------

@@ -74,14 +74,14 @@ static unsigned move_axis(const zxv_mapsolid *ms, int64_t *p, int64_t size, int6
         int plat = by_row && !(flags & ZXV_MOVE_THROUGH);
         for (int64_t c = ((e0 - 1) >> sh) + 1; c <= (e1 - 1) >> sh; c++)
             if (line_blocks(ms, c, r0, r1, by_row, plat)) {
-                *p = (c << sh) - size;
+                *p = c * ((int64_t)1 << sh) - size;     /* c puede ser negativo: no << */
                 return by_row ? ZXV_HIT_DOWN : ZXV_HIT_RIGHT;
             }
     } else {
         int64_t e0 = *p, e1 = e0 + d;
         for (int64_t c = (e0 >> sh) - 1; c >= e1 >> sh; c--)
             if (line_blocks(ms, c, r0, r1, by_row, 0)) {
-                *p = (c + 1) << sh;
+                *p = (c + 1) * ((int64_t)1 << sh);
                 return by_row ? ZXV_HIT_UP : ZXV_HIT_LEFT;
             }
     }

@@ -1,8 +1,9 @@
 /*
  * font.c - Texto con fuentes propias (include/zxv_font.h).
  *
- * Opcional: añade $(SDK)/lib/font.c a tu programa, y $(SDK)/lib/font_rom.c
- * si usas zxv_font_rom.
+ * Opcional: añade $(SDK)/lib/font.c y $(SDK)/lib/font_rom.c a tu programa
+ * (font_rom.c hace falta siempre: font.c lo usa aunque no llames a
+ * zxv_font_rom).
  *
  * Cada fila de un carácter se dibuja por tramos del mismo color con
  * zxv_gfx_rect: ampliar es hacer los rectángulos más grandes, y el motor

@@ -42,8 +42,8 @@ zxv_fix zxv_sin(int32_t angle);
 zxv_fix zxv_cos(int32_t angle);
 
 /* El ángulo (de 0 a 0xFFFF) del vector (x, y): 0 hacia x creciente, 0x4000
- * hacia y creciente (abajo en la pantalla). Con un error de unas pocas
- * unidades de 1/65536 de vuelta; atan2(0, 0) es 0. */
+ * hacia y creciente (abajo en la pantalla). Se aparta del valor exacto
+ * menos de 1/65536 de vuelta (0,52 como mucho); atan2(0, 0) es 0. */
 int32_t zxv_atan2(int32_t y, int32_t x);
 
 /* Raíces cuadradas enteras, hacia abajo: isqrt(10) = 3. */

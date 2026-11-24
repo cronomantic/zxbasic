@@ -8,6 +8,11 @@
  * primero. Se escribe en name~, se borra name y name~ pasa a llamarse
  * name. Si la máquina se apaga entre medias, al leer queda name~: zxv_load
  * lo prueba cuando name no está o no vale.
+ *
+ * zxv_load comprueba el CRC antes de tocar data. Hasta SMALL bytes, lee el
+ * fichero en la pila y copia; con más no hay sitio para una copia (no hay
+ * montón): lo lee una vez para comprobarlo y otra en data, comprobándolo
+ * otra vez (y si esa falla, lo intenta de nuevo).
  */
 #include "zxv_save.h"
 
@@ -15,18 +20,19 @@
 
 #define HEAD 16
 #define PATH_MAX_SAVE 254
+#define SMALL 256                       /* hasta aquí, zxv_load lee en la pila: data solo cambia si vale */
 
-uint32_t zxv_crc32(const void *data, uint32_t n)
+static uint32_t crc_more(uint32_t c, const uint8_t *p, uint32_t n)
 {
-    const uint8_t *p = data;
-    uint32_t c = 0xFFFFFFFFu;
     while (n--) {
         c ^= *p++;
         for (int k = 0; k < 8; k++)
             c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1u)));
     }
-    return ~c;
+    return c;
 }
+
+uint32_t zxv_crc32(const void *data, uint32_t n) { return ~crc_more(0xFFFFFFFFu, data, n); }
 
 static void put32(uint8_t *p, uint32_t v)
 {
@@ -98,7 +104,29 @@ int zxv_save(const char *name, uint16_t version, const void *data, uint32_t len)
     return zxv_file_rename(tmp, name);
 }
 
-/* Lee y comprueba un fichero; data solo cambia si vale. */
+/* Lee los len bytes de datos de f (en dst, o solo para comprobarlos si dst
+ * es NULL) y comprueba que su CRC es want y que no hay nada más. */
+static int read_check(int f, uint8_t *dst, uint32_t len, uint32_t want)
+{
+    uint32_t crc = 0xFFFFFFFFu, left = len;
+    uint8_t buf[64];
+    while (left) {
+        uint32_t n = left < sizeof buf ? left : (uint32_t)sizeof buf;
+        uint8_t *to = dst ? dst : buf;
+        int r = zxv_file_read(f, to, n);
+        if (r != (int)n)
+            return r < 0 ? r : ZXV_SAVE_E_DAMAGED;
+        crc = crc_more(crc, to, n);
+        if (dst)
+            dst += n;
+        left -= n;
+    }
+    return zxv_file_read(f, buf, 1) != 0 || ~crc != want ? ZXV_SAVE_E_DAMAGED : ZXV_OK;
+}
+
+/* Lee y comprueba un fichero. data solo cambia si vale, salvo con más de
+ * SMALL bytes si la lectura en data falla después de comprobarlo (dos
+ * veces): entonces queda a medias. */
 static int load_one(const char *name, uint16_t version, void *data, uint32_t len)
 {
     int f = zxv_file_open(name, ZXV_O_READ);
@@ -114,32 +142,30 @@ static int load_one(const char *name, uint16_t version, void *data, uint32_t len
         zxv_file_close(f);
         return ZXV_SAVE_E_VERSION;
     }
-    /* Se lee a trozos y se comprueba el CRC antes de tocar data. */
-    uint32_t crc = 0xFFFFFFFFu, left = len;
-    uint8_t buf[64];
-    while (left) {
-        uint32_t n = left < sizeof buf ? left : (uint32_t)sizeof buf;
-        r = zxv_file_read(f, buf, n);
-        if (r != (int)n) {
-            zxv_file_close(f);
-            return r < 0 ? r : ZXV_SAVE_E_DAMAGED;
-        }
-        for (uint32_t i = 0; i < n; i++) {
-            crc ^= buf[i];
-            for (int k = 0; k < 8; k++)
-                crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
-        }
-        left -= n;
+    uint32_t want = get32(h + 12);
+    if (len <= SMALL) {
+        /* En la pila, comprobado; luego a data. */
+        uint8_t copy[SMALL];
+        r = read_check(f, copy, len, want);
+        if (r == ZXV_OK)
+            for (uint32_t i = 0; i < len; i++)
+                ((uint8_t *)data)[i] = copy[i];
+    } else {
+        /* Comprobado sin tocar data; luego en data, comprobándolo otra vez
+         * (si la tarjeta falla justo ahora o lee otra cosa), y si falla, una
+         * vez más. */
+        r = read_check(f, NULL, len, want);
+        if (r == ZXV_OK)
+            for (int tries = 0; tries < 2; tries++) {
+                r = zxv_file_seek(f, HEAD, ZXV_SEEK_SET);
+                if (r >= 0)
+                    r = read_check(f, data, len, want);
+                if (r == ZXV_OK)
+                    break;
+            }
     }
-    if (zxv_file_read(f, buf, 1) != 0 || ~crc != get32(h + 12)) {
-        zxv_file_close(f);
-        return ZXV_SAVE_E_DAMAGED;
-    }
-    /* Bien: ahora sí, a data. */
-    zxv_file_seek(f, HEAD, ZXV_SEEK_SET);
-    r = len ? zxv_file_read(f, data, len) : 0;
     zxv_file_close(f);
-    return r == (int)len ? ZXV_OK : ZXV_SAVE_E_DAMAGED;
+    return r;
 }
 
 int zxv_load(const char *name, uint16_t version, void *data, uint32_t len)
@@ -150,7 +176,8 @@ int zxv_load(const char *name, uint16_t version, void *data, uint32_t len)
     int r = load_one(name, version, data, len);
     if (r == ZXV_OK || r == ZXV_E_NOCARD || r == ZXV_E_OFFLINE)
         return r;
-    /* El de verdad no está o no vale: quizá se apagó a medio cambiarlo. */
+    /* El de verdad no está o no vale: quizá se apagó a medio cambiarlo. Si
+     * name~ vale, data queda bien aunque la lectura de name la estropease. */
     int t = load_one(tmp, version, data, len);
     return t == ZXV_OK ? ZXV_OK : r;
 }

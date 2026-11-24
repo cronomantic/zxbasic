@@ -53,7 +53,7 @@
 
 typedef struct {
     int format;                 /* ZXV_MUSIC_... */
-    int chips;                  /* los AY que usa: 1 o 2 */
+    int chips;                  /* los AY que usa, por bits: 1 el primero, 3 los dos; 0 ninguno */
     char title[33];
     char author[33];
 } zxv_music_info_t;
