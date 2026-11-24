@@ -40,8 +40,9 @@ function SAVEDATA(ByVal f as String, version as UInteger, addr as ULong, size as
 end function
 
 REM LOADDATA(f$, version, addr, size): what SAVEDATA saved with that version
-REM and size. 0, or SAVENOFILE, SAVENOCARD, SAVEDAMAGED, SAVEVERSION...; if
-REM it fails, the memory does not change
+REM and size. 0, or SAVENOFILE, SAVENOCARD, SAVEDAMAGED, SAVEVERSION...; with
+REM an error, put the values of always (with more than 256 bytes, if the card
+REM fails while reading at addr, the memory is left half read)
 function LOADDATA(ByVal f as String, version as UInteger, addr as ULong, size as ULong) as Long
     asm
     lw a0, 8(s0)

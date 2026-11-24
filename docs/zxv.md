@@ -2980,8 +2980,13 @@ wrong.
 LOADDATA(f$, version, addr, size)   ' version UInteger, addr ULong, size ULong; gives Long
 ```
 
-Reads at `addr` what `SAVEDATA` saved with that `version` and `size`. If it
-fails, the memory does not change: keep the values of always.
+Reads at `addr` what `SAVEDATA` saved with that `version` and `size`. A
+file that is not there, of another version or size, or damaged leaves the
+memory as it was. Up to 256 bytes, so does any error. With more there is no
+room for a copy: it checks the file first and then reads it at `addr`
+(checking it again); if the card fails just then (taken out at that moment),
+the error comes back with the memory half read. So, with any error, put the
+values of always, as in the example.
 
 **Parameters:** as [SAVEDATA](#savedata).
 
