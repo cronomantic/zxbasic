@@ -151,14 +151,18 @@ Refused (the compiler stops with an error):
   "name"` runs the program.
 - `--append-binary` and `--append-headless-binary`: use `--embed`.
 
+`--debug-array` (since v1.19.0-zxv.7) checks every subscript of an array
+against its bounds when the program runs, and one out of them stops it with
+`3 Subscript wrong`, as on the Z80. Without it subscripts are not checked:
+an index out of the bounds reads or writes other memory, without an error.
+A constant subscript out of the bounds is a warning when compiling, with or
+without it.
+
 Accepted, but they do nothing:
 
 - `-S`/`--org`: the program goes where the ROM loads it, `0x20034000`.
 - `-H`/`--heap-size` and `--heap-address`: the heap is all the free memory.
 - `--debug-memory`: the memory is always checked (`4 Out of memory`).
-- `--debug-array`: subscripts are **never** checked. An index out of the
-  bounds of an array reads or writes other memory, without an error (no
-  `3 Subscript wrong`).
 - `--headerless`, `-N`/`--zxnext` and `-M`/`--mmap` (no map is written).
 
 ## Status

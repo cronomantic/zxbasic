@@ -245,6 +245,8 @@ def build(asm_text: str, output: str, used: list[tuple[str, int]] = ()) -> int:
             return 1
         if screen[0] == 0:
             defines.append("-DZXB_LOADING_SCREEN")
+    if OPTIONS.array_check:
+        defines.append("-DZXB_CHECK_ARRAYS")  # --debug-array: zxb_array checks the indexes
 
     # The files of --embed: a table the runtime looks in (zxb_embed.c), in the program
     embedded = OPTIONS[EMBED].value if EMBED in OPTIONS else []

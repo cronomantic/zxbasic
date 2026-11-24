@@ -268,8 +268,19 @@ uint64_t zxb_array(const uint32_t *arr, const uint32_t *idx)
     const uint8_t *lb = (const uint8_t *)(uintptr_t)arr[2];
     uint32_t n = (uint32_t)(dims[0] | dims[1] << 8) + 1;
     uint32_t off = 0;
+#ifdef ZXB_CHECK_ARRAYS
+    /* --debug-array: each index between its LBOUND and its UBOUND (the
+     * compiler keeps the UBOUND table of every array then), or 3 Subscript
+     * wrong, as the __CHECK_ARRAY_BOUNDARY__ of the Z80 runtime */
+    const uint8_t *ub = (const uint8_t *)(uintptr_t)arr[3];
+#endif
     for (uint32_t i = 0; i < n; i++) {
         uint32_t v = idx[i] & 0xFFFF;
+#ifdef ZXB_CHECK_ARRAYS
+        uint32_t lo = lb ? (uint32_t)(lb[2 * i] | lb[2 * i + 1] << 8) : 0;
+        if (v < lo || (ub && v > (uint32_t)(ub[2 * i] | ub[2 * i + 1] << 8)))
+            zxb_ERROR(ERR_SUBSCRIPT);
+#endif
         if (lb)
             v -= (uint32_t)(lb[2 * i] | lb[2 * i + 1] << 8);
         off += v;
