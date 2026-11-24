@@ -3,7 +3,7 @@
  * zxb_embed.c - The files the program carries inside (zxbc --embed FILE),
  * as the C games of ZX-V carry theirs (ZX-V decision D82).
  *
- * What reads a file (LOAD, VERIFY, MUSICLOAD, SFXLOAD) opens it with
+ * What reads a file (LOAD, VERIFY, MUSICLOAD, SFXLOAD, SAMPLELOAD) opens it with
  * zxb_rd_open: the file in the current folder if there is one, so a file on
  * the card takes the place of the one inside, and if not (it is not there,
  * or there is no card) the embedded file with the same name. The name is

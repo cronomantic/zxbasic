@@ -26,6 +26,29 @@ If you modify *this* project (the compiler .py or anything licensed as AGPLv3)
 in any and use it as a part of a SaaS service, you MUST publish the changes
 you made and submit your contribution to the community under the same license.
 
+
+ZX-V TARGET (BRANCH `zxv`)
+--------------------------
+
+This fork adds a target for [ZX-V](https://github.com/cronomantic/ZX-V), a
+32-bit RISC-V machine with a ZX Spectrum style BASIC: `zxbc --arch=zxv
+program.bas` makes a native `.zxv` program that ZX-V loads with
+`LOAD "name"`. It lives in the branch `zxv`, which follows Boriel's `main`;
+the Z80 targets do not change.
+
+- Documentation: [docs/zxv.md](docs/zxv.md) (how it works, memory, compiler
+  options, files, code banks, and the reference of `zxv.bas` and of the
+  libraries of the ZX-V SDK, with the version each command came in).
+- Releases: tags `v1.19.0-zxv.N`, with a Windows build (`zxbc.exe`) in the
+  [releases](https://github.com/cronomantic/zxbasic/releases). It needs the
+  RISC-V GCC toolchain (`riscv64-unknown-elf-gcc`).
+- An introduction in Spanish, with examples, is in the ZX-V documentation:
+  [Compilar BASIC con ZX Basic](https://github.com/cronomantic/ZX-V/blob/main/docs/es/zxbasic.md)
+  ([English](https://github.com/cronomantic/ZX-V/blob/main/docs/en/zxbasic.md)).
+
+The runtime and the libraries of the target are MIT, like the rest of the
+libraries: compiled programs can have any licence.
+
 -------------------------
 
 DOCUMENTATION

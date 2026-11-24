@@ -2,37 +2,52 @@
 ' This file is released under the MIT License
 '
 ' zxv.bas: what is only in ZX-V, with the names and arguments of the ZX-V
-' BASIC commands (its manual, "Modos de vídeo y efectos", "Sprites, mapas de
-' tiles y gráficos rápidos", KEY, JOY, SOUND, MUSIC and SFX). The runtime
-' (zxb_zxv.c) calls the engine of the ROM, and zxb_music.c the music library
-' of the ZX-V SDK (also for SAMPLE).
+' BASIC commands (its reference: video modes, sprites, tile maps, mode 7,
+' fast graphics, KEY, JOY, SOUND, MUSIC, SFX and SAMPLE). The runtime
+' (zxb_zxv.c, zxb_maps.c) calls the engine of the ROM, and zxb_music.c the
+' music library of the ZX-V SDK. Each command, with its parameters, errors
+' and the version it came in: docs/zxv.md.
 '
-' The fast graphics (SPRITE, BOX, DISC, POLY, PIXEL...) count pixels from the
-' top left corner of the drawing page, with the y downwards; colours are
-' 0-15 and 8 is transparent in sprites. PRINT, PLOT and CLS draw on the
-' top left 256 x 192 pixels of the drawing page, in any mode.
+' The fast graphics (SPRITE, BOX, DISC, POLY, MAP, FLOOR...) count pixels
+' from the top left corner of the drawing page (SCREEN), with the y
+' downwards; colours are 0-15 and 8 is transparent in sprites, tiles and
+' textures. PRINT, PLOT, DRAW, CIRCLE and CLS only use the top left
+' 256 x 192 pixels of the drawing page, in any mode. The arguments are
+' converted to the type of each parameter as in any call (a UByte keeps
+' the low 8 bits: PAGE 257 is PAGE 1).
 '
-' Not as in the ZX-V BASIC:
-'  - The sprite of a string is GRABSTR n, w, a$ (GRAB n, w, a$ there).
-'  - KEY, JOY and HIT are functions: KEY(9), not KEY 9.
-'  - REMAP and SOUND take one pair at a time and PALETTE one colour, REMAP
-'    and PALETTE only change table 0 (no #t), and REMAP alone is REMAPRESET
-'    and PALETTE alone PALETTERESET.
-'  - POLY takes up to 8 points.
-'  - The tile maps: TILESTR s, n, a$ (TILE s, n, a$ there), MAPDIM and
-'    MAPPOKE (MAP DIM and MAP POKE), MAPPOKESTR m, x, y, a$ (MAP POKE with a
-'    string), and CELL is a function: CELL(m, x, y). FLOORMAP and ROTATEMAP
-'    are FLOOR MAP and ROTATE MAP. The tiles, maps and textures are in the
-'    heap of the program and go with it (the ZX-V BASIC keeps them in its
-'    store between programs); no SAVE or LOAD ... GRAPHICS.
+' Not as in the ZX-V BASIC (the whole list, in docs/zxv.md):
+'  - KEY and JOY are functions with brackets: KEY(9), not KEY 9. (HIT,
+'    PIXEL and CELL have them in both.)
+'  - Names of their own: GRABSTR n, w, a$ (GRAB n, w, a$ there); TILESTR
+'    s, n, a$ (TILE s, n, a$); MAPDIM and MAPPOKE (MAP DIM, MAP POKE);
+'    MAPPOKESTR m, x, y, a$ (MAP POKE with a string); FLOORMAP and
+'    ROTATEMAP (FLOOR MAP, ROTATE MAP); PATTERNBITS r0, ..., r7[, p]
+'    (PATTERN with eight bytes); REMAPRESET and PALETTERESET (REMAP and
+'    PALETTE alone).
+'  - REMAP and SOUND take one pair at a time and PALETTE one colour; REMAP
+'    and PALETTE only change table 0 (no #t). POLY takes up to 8 points.
+'  - No JOY n, mode (a joystick as keys), and no SOUND registers 64-159
+'    (the sample channels).
+'  - PAGE and SCREEN give B Integer out of range for a page that is not 0
+'    or 1. MODE also takes the PATTERN away. In FLOOR and FLOORMAP a focal
+'    of 0 is the default; the positions and angles of mode 7 are Fixed.
+'  - The tiles, maps and textures (and the sprites) are in the heap of the
+'    program and go with it (the ZX-V BASIC keeps them in its store between
+'    programs); no SAVE or LOAD ... GRAPHICS.
 '  - SCREEN can not be used with screen.bas (its SCREEN$ is also screen).
 '  - The music and the effects: MUSICLOAD f$ and SFXLOAD f$ (LOAD f$ MUSIC
 '    and SFX there), MUSICPLAY, MUSICSTOP, MUSICPAUSE and MUSICCONTINUE, and
 '    the function SFXPLAYING (SFX alone there). MUSICLOAD does not take MOD,
-'    S3M or XM modules: zxv-music turns them into a .zxm first.
+'    S3M or XM modules (zxv-music turns them into a .zxm first), and without
+'    an extension it tries f$.zxm, f$.pt3, f$.vgm and f$.vgz. The music
+'    stops when the program ends.
 '  - The recorded sounds: SAMPLELOAD f$, n (LOAD f$ SAMPLE n there), SAMPLE
 '    n, tone, vol, pan, c (SAMPLE n, tone, vol, pan; c there), SAMPLESTOP
 '    [c] and the function SAMPLEPLAYING (SAMPLE alone there).
+'
+' PATTERN, PATTERNBITS, ROTATE, FLOORMAP and ROTATEMAP need a ZX-V ROM of
+' specification 0.2 (the one after ZX-V 0.10.0).
 ' ----------------------------------------------------------------
 
 #ifndef __LIBRARY_ZXV__
@@ -275,7 +290,7 @@ end function
 
 REM KEY(n): 1 if the key is down now (several at once). n: CODE "a" to
 REM CODE "z", CODE "0" to CODE "9", 8 to 11 the cursor keys (left, right,
-REM down, up), 12 Delete, 13 Enter, 32 Space, or 256 + a USB key code
+REM down, up), 12 Backspace, 13 Enter, 32 Space, or 256 + a USB key code
 function KEY(n as UInteger) as UByte
     asm
     lw a0, 8(s0)

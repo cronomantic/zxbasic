@@ -51,7 +51,8 @@ def add_arguments(parser) -> None:
         metavar="FILE",
         action="append",
         default=[],
-        help="Puts FILE inside the .zxv (it can be repeated): LOAD, MUSICLOAD and SFXLOAD use it when there is "
+        help="Puts FILE inside the .zxv (it can be repeated): LOAD, VERIFY, MUSICLOAD, SFXLOAD and SAMPLELOAD use it "
+        "when there is "
         "no file with its name in the current folder, so the program works alone, from ROM: too",
     )
     OPTIONS(Action.ADD_IF_NOT_DEFINED, name=EMBED, type=list, default=[])
