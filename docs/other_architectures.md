@@ -4,7 +4,7 @@ The compiler targets today, chosen with `--arch` (see [zxbc](zxb.md)):
 
 * `zx48k`: the ZX Spectrum (by default)
 * `zxnext`: the ZX Spectrum Next
-* `zxv`: [ZX-V](zxv.md), a 32-bit RISC-V machine with a ZX Spectrum style BASIC (a prototype)
+* `zxv`: [ZX-V](zxv.md), a 32-bit RISC-V machine with a ZX Spectrum style BASIC
 
 The rest of this page lists machines it could be extended to.
 
@@ -172,7 +172,7 @@ The rest of this page lists machines it could be extended to.
 
 ### RISC-V
 
-* [ZX-V](zxv.md) (`--arch=zxv`, a prototype)
+* [ZX-V](zxv.md) (`--arch=zxv`)
 
 ## Game Consoles
 ### 6502

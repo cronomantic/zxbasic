@@ -236,7 +236,7 @@ better assumptions and further error checking and optimizations.
 
 * **--arch**
 <br /> The target machine: `zx48k` (the ZX Spectrum, by default), `zxnext` (the ZX Spectrum Next) or `zxv`
-([ZX-V](zxv.md), a 32-bit RISC-V machine; a prototype).
+([ZX-V](zxv.md), a 32-bit RISC-V machine).
 
 * **-f** or **--output-format**
 <br /> The output format: `bin` (by default), `tap`, `tzx`, `sna`, `z80`, `asm` or `ir` (the intermediate code
