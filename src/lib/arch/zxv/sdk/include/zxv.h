@@ -187,6 +187,8 @@
 #define ZXV_I_KEY_MODS          (ZXV_INPUT_REGS + 0x30u)   /* u8            */
 #define ZXV_I_JOY0              (ZXV_INPUT_REGS + 0x40u)   /* u16           */
 #define ZXV_I_JOY1              (ZXV_INPUT_REGS + 0x42u)   /* u16           */
+#define ZXV_I_JOY2              (ZXV_INPUT_REGS + 0x44u)   /* u16, reservado: a 0 (spec §6.1) */
+#define ZXV_I_JOY3              (ZXV_INPUT_REGS + 0x46u)   /* u16, reservado: a 0 */
 #define ZXV_I_MOUSE_X           (ZXV_INPUT_REGS + 0x48u)   /* i16           */
 #define ZXV_I_MOUSE_Y           (ZXV_INPUT_REGS + 0x4Au)   /* i16           */
 #define ZXV_I_MOUSE_BTN         (ZXV_INPUT_REGS + 0x4Cu)   /* u8            */
