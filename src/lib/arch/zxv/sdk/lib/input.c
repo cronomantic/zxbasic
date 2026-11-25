@@ -39,9 +39,10 @@ const zxv_input_map zxv_input_default = {
         { K_ENTER },                /* START */
         { K_TAB },                  /* SELECT */
         { K_ESC },                  /* ESC */
+        { 0 },                      /* FIRE4, L y R: solo con el mando */
     },
     .joy = { ZXV_JOY_RIGHT, ZXV_JOY_LEFT, ZXV_JOY_DOWN, ZXV_JOY_UP, ZXV_JOY_FIRE1, ZXV_JOY_FIRE2, ZXV_JOY_FIRE3,
-             ZXV_JOY_START, ZXV_JOY_SELECT },
+             ZXV_JOY_START, ZXV_JOY_SELECT, 0, ZXV_JOY_FIRE4, ZXV_JOY_L, ZXV_JOY_R },
     .pad = 0,
     .flags = 0,
 };

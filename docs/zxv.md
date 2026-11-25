@@ -1837,8 +1837,9 @@ bits; 0 if it is not connected.
 |---|---|---|
 | `n` | 0 or 1 | The joystick (0, the first connected). |
 
-**Returns:** 0-511: 1 right, 2 left, 4 down, 8 up, 16 fire 1, 32 fire 2,
-64 fire 3, 128 start, 256 select.
+**Returns:** 0-4095: 1 right, 2 left, 4 down, 8 up, 16 fire 1, 32 fire 2,
+64 fire 3, 128 start, 256 select, 512 fire 4, 1024 L and 2048 R (the upper
+shoulder buttons).
 
 **Errors**
 
@@ -2484,11 +2485,12 @@ DO
 LOOP
 ```
 
-**Constants.** The actions of the map of always, the same bits as the
-buttons of `JOY`: `CTRLRIGHT` 1, `CTRLLEFT` 2, `CTRLDOWN` 4, `CTRLUP` 8,
-`CTRLFIRE` 16, `CTRLFIRE2` 32, `CTRLFIRE3` 64, `CTRLSTART` 128,
-`CTRLSELECT` 256, `CTRLESC` 512 (a game can use the other bits, up to
-32768, for actions of its own). The keys, by their USB code (their place on
+**Constants.** The actions of the map of always, the first nine the same
+bits as the buttons of `JOY`: `CTRLRIGHT` 1, `CTRLLEFT` 2, `CTRLDOWN` 4,
+`CTRLUP` 8, `CTRLFIRE` 16, `CTRLFIRE2` 32, `CTRLFIRE3` 64, `CTRLSTART` 128,
+`CTRLSELECT` 256, `CTRLESC` 512, and, only on the joystick, `CTRLFIRE4`
+1024, `CTRLL` 2048 and `CTRLR` 4096 (a game can use the other bits, 8192
+to 32768, for actions of its own). The keys, by their USB code (their place on
 a US keyboard): `KEYA` to `KEYZ` (4-29), `KEY1` to `KEY9` and `KEY0`
 (30-39), `KEYENTER` 40, `KEYESCAPE` 41, `KEYBACKSPACE` 42, `KEYTAB` 43,
 `KEYSPACE` 44, `KEYRIGHTKEY` 79, `KEYLEFTKEY` 80, `KEYDOWNKEY` 81,
@@ -2515,7 +2517,8 @@ CTRLRESET [p]             ' p UByte
 The keys and the joystick of player `p` as at the start, and nothing held.
 Player 0: the cursors or Q A O P, fire with Space or M (and the button 1 of
 joystick 0), fire 2 with N or Z, fire 3 with B or X, Enter START, Tab
-SELECT, Esc `CTRLESC`. Player 1: no keys, the same buttons on joystick 1.
+SELECT, Esc `CTRLESC`, and fire 4, L and R only on the joystick. Player 1:
+no keys, the same buttons on joystick 1.
 Each player starts like this the first time it is used.
 
 **Parameters**

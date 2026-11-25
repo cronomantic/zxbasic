@@ -300,7 +300,7 @@ end function
 
 REM JOY(n): the buttons of joystick n (0 or 1); 0 if it is not connected.
 REM 1 right, 2 left, 4 down, 8 up, 16 fire 1, 32 fire 2, 64 fire 3,
-REM 128 start, 256 select
+REM 128 start, 256 select, 512 fire 4, 1024 L, 2048 R
 function JOY(n as UByte) as UInteger
     asm
     lw a0, 8(s0)

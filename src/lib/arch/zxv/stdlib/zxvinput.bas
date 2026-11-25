@@ -18,7 +18,8 @@ REM Avoid recursive / multiple inclusion
 #pragma push(case_insensitive)
 #pragma case_insensitive = True
 
-REM The actions of the map of always: the bits of the joystick buttons, and ESC
+REM The actions of the map of always: the first nine, the bits of the joystick
+REM buttons; then ESC, and fire 4, L and R (only on the joystick)
 CONST CTRLRIGHT as UInteger = 1
 CONST CTRLLEFT as UInteger = 2
 CONST CTRLDOWN as UInteger = 4
@@ -29,6 +30,9 @@ CONST CTRLFIRE3 as UInteger = 64
 CONST CTRLSTART as UInteger = 128
 CONST CTRLSELECT as UInteger = 256
 CONST CTRLESC as UInteger = 512
+CONST CTRLFIRE4 as UInteger = 1024
+CONST CTRLL as UInteger = 2048
+CONST CTRLR as UInteger = 4096
 
 REM The codes of some keys (USB HID, by their position on a US keyboard)
 CONST KEYA as UByte = 4
@@ -84,8 +88,9 @@ CONST KEYRSHIFT as UByte = 229
 
 REM CTRLRESET [p]: the keys of player p (0 or 1) as at the start: player 0,
 REM cursors or Q A O P, fire with Space or M (and the buttons 1 of joystick
-REM 0), fire 2 with N or Z, fire 3 with B or X, Enter START, Tab SELECT and
-REM Esc; player 1, no keys and joystick 1
+REM 0), fire 2 with N or Z, fire 3 with B or X, Enter START, Tab SELECT,
+REM Esc, and fire 4, L and R only on the joystick; player 1, no keys and
+REM joystick 1
 sub CTRLRESET(p as UByte = 0)
     asm
     lw a0, 8(s0)

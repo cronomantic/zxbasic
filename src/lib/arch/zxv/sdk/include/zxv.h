@@ -209,6 +209,9 @@
 #define ZXV_JOY_FIRE3           0x0040u
 #define ZXV_JOY_START           0x0080u
 #define ZXV_JOY_SELECT          0x0100u
+#define ZXV_JOY_FIRE4           0x0200u
+#define ZXV_JOY_L               0x0400u     /* el gatillo de arriba izquierdo (L, L1, LB) */
+#define ZXV_JOY_R               0x0800u     /* y el derecho (R, R1, RB) */
 #define ZXV_JOY_CONNECTED       0x8000u
 
 /* --- Registros de sonido (spec §5.2) ------------------------------------ */

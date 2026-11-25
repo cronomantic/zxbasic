@@ -28,8 +28,9 @@
 #define ZXV_IN_ACTIONS      16
 #define ZXV_IN_KEYS         3
 
-/* Las acciones del mapa de siempre: los mismos bits que los botones del
- * mando (ZXV_JOY_...), más Esc. Un juego puede usar los suyos. */
+/* Las acciones del mapa de siempre: las nueve primeras, los mismos bits que
+ * los botones del mando (ZXV_JOY_...); luego Esc, y el fuego 4, L y R (solo
+ * con el mando). Un juego puede usar los suyos. */
 #define ZXV_IN_RIGHT        0x0001u
 #define ZXV_IN_LEFT         0x0002u
 #define ZXV_IN_DOWN         0x0004u
@@ -40,6 +41,9 @@
 #define ZXV_IN_START        0x0080u
 #define ZXV_IN_SELECT       0x0100u
 #define ZXV_IN_ESC          0x0200u
+#define ZXV_IN_FIRE4        0x0400u
+#define ZXV_IN_L            0x0800u
+#define ZXV_IN_R            0x1000u
 
 typedef struct {
     uint8_t keys[ZXV_IN_ACTIONS][ZXV_IN_KEYS];  /* teclas (códigos HID) de cada acción; 0: ninguna */
@@ -54,7 +58,8 @@ typedef struct {
 
 /* El mapa de siempre: cursores o Q A O P, fuego con Espacio o M (y los
  * botones 1 del mando), fuego 2 con N o Z (botón 2), fuego 3 con B o X
- * (botón 3), Intro para START, Tab para SELECT, Esc; el mando 0. */
+ * (botón 3), Intro para START, Tab para SELECT, Esc; el fuego 4, L y R, solo
+ * con sus botones del mando; el mando 0. */
 extern const zxv_input_map zxv_input_default;
 
 typedef struct {
