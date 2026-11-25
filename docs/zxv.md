@@ -121,8 +121,8 @@ Above 64K the addresses are real: the ZX-V RAM, its VRAM and its registers.
 
 ### How much memory a program has
 
-The program goes in the user RAM of ZX-V, 244 KB from `0x20034000` to
-`0x20070FFF` (`src/lib/arch/zxv/sdk/zxv.ld`): first its code and its data,
+The program goes in the user RAM of ZX-V, 240 KB from `0x20034000` to
+`0x2006FFFF` (`src/lib/arch/zxv/sdk/zxv.ld`): first its code and its data,
 then the heap, and the last 32 KB are the stack. The heap is all that is left
 (`zxb_mem.c`): strings, local arrays, and what `zxv.bas` and the libraries
 keep (sprites, tiles, maps, textures, the music module, the effects bank,

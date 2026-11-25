@@ -3,7 +3,9 @@
  *
  * Única fuente de verdad compartida por la ROM, el SDK y el emulador.
  * Solo contiene #define, así que sirve tanto en C (anfitrión y RISC-V) como
- * en ensamblador (preprocesado con cpp).
+ * en ensamblador (preprocesado con cpp; ahí no valen las macros con
+ * conversiones de tipo, como ZXV_LANG o ZXV_RGB). Para ensamblador, además,
+ * ZXV_CALL (en los números de la API).
  */
 #ifndef ZXV_H
 #define ZXV_H
@@ -41,8 +43,8 @@
 #define ZXV_VRAM0_DATA          __attribute__((section(".bss.zxv_vram0")))
 #define ZXV_VRAM1_DATA          __attribute__((section(".bss.zxv_vram1")))
 #define ZXV_URAM_BASE           0x20034000u     /* RAM de usuario */
-#define ZXV_URAM_END            0x20071000u     /* exclusivo */
-#define ZXV_RESERVED_BASE       0x20071000u     /* reservada (PMP) */
+#define ZXV_URAM_END            0x20070000u     /* exclusivo (240 KB, D114) */
+#define ZXV_RESERVED_BASE       0x20070000u     /* reservada (PMP), 72 KB */
 #define ZXV_RESERVED_END        0x20082000u
 
 /* --- Área de sistema (spec §3.2) ---------------------------------------- */
@@ -458,6 +460,14 @@
 #define ZXV_API_GFX_PATTERN     56      /* desde la versión 0.2 */
 #define ZXV_API_M7_DRAW_MAP     57      /* desde la versión 0.2 */
 #define ZXV_API_M7_AFFINE       58      /* desde la versión 0.2 */
+
+/* En ensamblador (.S): ZXV_CALL(n) llama a la función n de la API por su
+ * tabla (spec §7.3), con los argumentos en a0-a7 y el resultado en a0, como
+ * una llamada de C: usa t0 y pisa ra y los registros temporales. Ejemplo:
+ * li a0, 7; ZXV_CALL(ZXV_API_CLS). */
+#ifdef __ASSEMBLER__
+#define ZXV_CALL(n)             lui t0, %hi(ZXV_API_TABLE); lw t0, 4 * (n)(t0); jalr t0
+#endif
 
 /* --- Reloj (spec §7.9) --------------------------------------------------- */
 #define ZXV_CLOCK_SIZE          8

@@ -12,7 +12,7 @@ sdk/tools/elf2zxv.py of ZX-V (MIT)."""
 import struct
 import zlib
 
-URAM_BASE, URAM_END = 0x20034000, 0x20071000
+URAM_BASE, URAM_END = 0x20034000, 0x20070000
 # The hidden VRAM of each page in mode 0 (zxv.ld, ZX-V D108): what a program puts there starts
 # zeroed (crt0.S) and is not in the file.
 VRAM_HIDDEN = ((0x2000A000, 0x2001C000), (0x20022000, 0x20034000))

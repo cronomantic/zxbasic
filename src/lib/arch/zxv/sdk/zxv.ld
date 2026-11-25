@@ -4,7 +4,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    URAM (rwx) : ORIGIN = 0x20034000, LENGTH = 0x3D000
+    URAM (rwx) : ORIGIN = 0x20034000, LENGTH = 0x3C000
     /* La VRAM oculta (spec §3.1, D108): en modo 0 y con VSIZE 0, cada página
      * solo enseña sus primeros 24 KB; los 72 KB de detrás son del programa. */
     VRAM0X (rw) : ORIGIN = 0x2000A000, LENGTH = 0x12000
