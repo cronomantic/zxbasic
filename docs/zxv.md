@@ -34,6 +34,7 @@ that has it.
 | v1.19.0-zxv.5 | `PALETTE`, `PALETTERESET`; `--loading-screen`; the screen in a `.gfx` and the rest in a `.bin`; the `.zxv` header of ZX-V 0.7.0 | 0.7.0 or later |
 | v1.19.0-zxv.6 | `--embed`; the `EXT:` drive (`V Disk error (no server for EXT:)`); `.zxm` and VGM music; `SAMPLELOAD`, `SAMPLE`, `SAMPLESTOP`, `SAMPLEPLAYING` | 0.7.0 or later (the samples, 0.10.0) |
 | v1.19.0-zxv.7 | `--code-bank`; tile maps (`TILE`... `CELL`); mode 7 (`TEXTURE`, `FLOOR`, `FLOORMAP`, `ROTATE`, `ROTATEMAP`); `PATTERN`, `PATTERNBITS`; the libraries of the ZX-V SDK in BASIC (`zxvinput.bas`... `zxv3d.bas`); 244 KB of user RAM | 0.7.0 or later; some parts, 0.11.0 or later (below) |
+| v1.19.0-zxv.8 | Four joysticks: `JOY(n)` from 0 to 3 and four players in `zxvinput.bas` (`CTRLPAD` from -1 to 3); `JOY` with fire 4, L and R (512, 1024, 2048); 240 KB of user RAM (the memory map of ZX-V 0.12.0) | 0.7.0 or later; joysticks 2 and 3 and fire 4, L and R, 0.12.0 or later (before, 0) |
 
 A `.zxv` made with v1.19.0-zxv.4 or older does not load in ZX-V 0.7.0 or
 later (the header of the programs grew): compile it again.
@@ -46,7 +47,9 @@ are specification 0.1). They are code banks (`--code-bank`),
 a bank stops it with "the ROM has no banks", and the rest does not draw what
 it should (see each entry). Other needs: `BEEP` while music plays needs ZX-V
 0.6.0 or later (before, it is silent), and the sample channels (`SAMPLE`, the
-sample tracks of a `.zxm`) ZX-V 0.10.0 or later.
+sample tracks of a `.zxm`) ZX-V 0.10.0 or later. Joysticks 2 and 3 and the
+fire 4, L and R buttons are **specification 0.3**, ZX-V 0.12.0 or later: with
+an older ROM, `JOY(2)`, `JOY(3)` and those bits read 0.
 
 ## How it works
 
@@ -1863,7 +1866,7 @@ DO
 LOOP
 ```
 
-**Since:** v1.19.0-zxv.1.
+**Since:** v1.19.0-zxv.1 (`n` 2 and 3, and fire 4, L and R, since v1.19.0-zxv.8).
 
 **See also:** [KEY](#key), [`zxvinput.bas`](#zxvinputbas).
 
@@ -2531,7 +2534,7 @@ Each player starts like this the first time it is used.
 
 **Example:** `CTRLRESET 1`.
 
-**Since:** v1.19.0-zxv.7.
+**Since:** v1.19.0-zxv.7 (four players, `p` 2 and 3, since v1.19.0-zxv.8).
 
 **See also:** [CTRLKEY](#ctrlkey), [CTRLPAD](#ctrlpad).
 
