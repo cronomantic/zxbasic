@@ -50,14 +50,14 @@ static uint32_t c_len(const char *s)
 
 /* --- zxvinput.bas -------------------------------------------------------------- */
 
-#define PLAYERS 2
+#define PLAYERS 4                           /* one per joystick (ZX-V D122) */
 
 static zxv_input_map in_map[PLAYERS];
 static zxv_input in_state[PLAYERS];
 static uint8_t in_ready[PLAYERS];
 
-/* Player 0: the map of always (zxv_input_default); player 1: no keys, the
- * buttons of joystick 1 */
+/* Player 0: the map of always (zxv_input_default); players 1 to 3: no keys,
+ * the buttons of their joystick (1 to 3) */
 void zxb_ctrl_reset(int p)
 {
     range(p, 0, PLAYERS - 1);
@@ -67,7 +67,7 @@ void zxb_ctrl_reset(int p)
         in_map[p] = (zxv_input_map){ 0 };
         for (int a = 0; a < ZXV_IN_ACTIONS; a++)
             in_map[p].joy[a] = zxv_input_default.joy[a];
-        in_map[p].pad = 1;
+        in_map[p].pad = (int8_t)p;
     }
     zxv_input_init(&in_state[p], &in_map[p]);
     in_ready[p] = 1;
@@ -108,7 +108,7 @@ void zxb_ctrl_button(int p, int bit, int buttons)
 void zxb_ctrl_pad(int p, int pad)
 {
     player(p);
-    range(pad, -1, 1);
+    range(pad, -1, 3);
     in_map[p].pad = (int8_t)pad;
 }
 

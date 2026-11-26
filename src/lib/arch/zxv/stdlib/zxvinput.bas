@@ -86,11 +86,11 @@ CONST KEYLALT as UByte = 226
 CONST KEYRCTRL as UByte = 228
 CONST KEYRSHIFT as UByte = 229
 
-REM CTRLRESET [p]: the keys of player p (0 or 1) as at the start: player 0,
+REM CTRLRESET [p]: the keys of player p (0 to 3) as at the start: player 0,
 REM cursors or Q A O P, fire with Space or M (and the buttons 1 of joystick
 REM 0), fire 2 with N or Z, fire 3 with B or X, Enter START, Tab SELECT,
-REM Esc, and fire 4, L and R only on the joystick; player 1, no keys and
-REM joystick 1
+REM Esc, and fire 4, L and R only on the joystick; players 1 to 3, no keys
+REM and their joystick (1 to 3)
 sub CTRLRESET(p as UByte = 0)
     asm
     lw a0, 8(s0)
@@ -121,7 +121,7 @@ sub CTRLBUTTON(p as UByte, action as UInteger, buttons as UInteger)
     end asm
 end sub
 
-REM CTRLPAD p, pad: the joystick of player p: 0, 1 or -1 (none)
+REM CTRLPAD p, pad: the joystick of player p: 0 to 3, or -1 (none)
 sub CTRLPAD(p as UByte, pad as Byte)
     asm
     lw a0, 8(s0)

@@ -1835,7 +1835,7 @@ bits; 0 if it is not connected.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `n` | 0 or 1 | The joystick (0, the first connected). |
+| `n` | 0 to 3 | The joystick (0, the first connected; 1, the second...). |
 
 **Returns:** 0-4095: 1 right, 2 left, 4 down, 8 up, 16 fire 1, 32 fire 2,
 64 fire 3, 128 start, 256 select, 512 fire 4, 1024 L and 2048 R (the upper
@@ -1845,7 +1845,7 @@ shoulder buttons).
 
 | Error | When |
 |---|---|
-| `B Integer out of range` | `n` is not 0 or 1. |
+| `B Integer out of range` | `n` is not 0 to 3. |
 
 Same as the function [`JOY`][b-joy] of the ZX-V BASIC.
 
@@ -2450,7 +2450,7 @@ one, the faces between the dark and the light tone come out plain) and for
 
 | File | |
 |---|---|
-| [`zxvinput.bas`](#zxvinputbas) | The keyboard and the joysticks at once, as actions, for two players, with keys the player can change |
+| [`zxvinput.bas`](#zxvinputbas) | The keyboard and the joysticks at once, as actions, for up to four players, with keys the player can change |
 | [`zxvsave.bas`](#zxvsavebas) | Saving the data of a game without losing it in a power cut, and a table of scores |
 | [`zxvfade.bas`](#zxvfadebas) | Palette fades |
 | [`zxvfont.bas`](#zxvfontbas) | Text of any size and colour, proportional |
@@ -2467,9 +2467,9 @@ test them.
 #### zxvinput.bas
 
 The keyboard and the joysticks at once, as **actions** (up to 16, a bit
-each), for two players, `p` 0 and 1: player 0 with the cursors or Q A O P,
-Space or M to fire and joystick 0; player 1, joystick 1 and the keys you
-give it. Once a frame, `CTRLUPDATE`; then what is held, what was pressed or
+each), for up to four players, `p` 0 to 3: player 0 with the cursors or
+Q A O P, Space or M to fire and joystick 0; players 1 to 3, their joystick
+(1 to 3) and the keys you give them. Once a frame, `CTRLUPDATE`; then what is held, what was pressed or
 released in this frame, how long. C: [`zxv_input.h`][l-input].
 
 ```basic
@@ -2502,7 +2502,7 @@ KEYA)` is the same as `KEY(CODE "a")`.)
 
 | Error | When |
 |---|---|
-| `B Integer out of range` | The player `p` is not 0 or 1. |
+| `B Integer out of range` | The player `p` is not 0 to 3. |
 
 `CTRLUPDATE` empties the queue of keys, so what is typed in the game does
 not reach `INKEY$`, `INPUT` or the BASIC when the program ends;
@@ -2517,15 +2517,15 @@ CTRLRESET [p]             ' p UByte
 The keys and the joystick of player `p` as at the start, and nothing held.
 Player 0: the cursors or Q A O P, fire with Space or M (and the button 1 of
 joystick 0), fire 2 with N or Z, fire 3 with B or X, Enter START, Tab
-SELECT, Esc `CTRLESC`, and fire 4, L and R only on the joystick. Player 1:
-no keys, the same buttons on joystick 1.
+SELECT, Esc `CTRLESC`, and fire 4, L and R only on the joystick. Players 1
+to 3: no keys, the same buttons on their joystick (1 to 3).
 Each player starts like this the first time it is used.
 
 **Parameters**
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Errors:** (common).
 
@@ -2548,7 +2548,7 @@ an action can have up to three keys.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
+| `p` | 0 to 3 | The player. |
 | `action` | one bit: `CTRLLEFT`... or 1, 2, 4... 32768 | The action. |
 | `slot` | 0-2 | Which of its three keys. |
 | `k` | a key code (`KEYA`...), or 0 for none | The key. |
@@ -2587,7 +2587,7 @@ The joystick buttons (the bits of [JOY](#joy)) that do `action` for player
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
+| `p` | 0 to 3 | The player. |
 | `action` | one bit | The action. |
 | `buttons` | 0-511 | The buttons, added. |
 
@@ -2610,20 +2610,20 @@ The joystick buttons (the bits of [JOY](#joy)) that do `action` for player
 CTRLPAD p, pad            ' p UByte, pad Byte
 ```
 
-The joystick of player `p`: 0, 1 or -1 (none).
+The joystick of player `p`: 0 to 3, or -1 (none).
 
 **Parameters**
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
-| `pad` | -1, 0 or 1 | The joystick. |
+| `p` | 0 to 3 | The player. |
+| `pad` | -1 to 3 | The joystick (-1, none). |
 
 **Errors**
 
 | Error | When |
 |---|---|
-| `B Integer out of range` | `pad` is not -1, 0 or 1. |
+| `B Integer out of range` | `pad` is not -1 to 3. |
 | (common) | |
 
 **Example:** `CTRLPAD 0, -1` (player 0, only the keyboard).
@@ -2645,7 +2645,7 @@ With 1, `CTRLUPDATE` of player `p` does not empty the queue of keys:
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
+| `p` | 0 to 3 | The player. |
 | `onoff` | 0, or anything else for yes | Keep the keys. |
 
 **Errors:** (common).
@@ -2669,7 +2669,7 @@ before asking what is held.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Errors:** (common).
 
@@ -2692,7 +2692,7 @@ The actions held now, added (`CTRLLEFT + CTRLFIRE`...). Test one with
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Returns:** the bits of the actions, 0-65535.
 
@@ -2717,7 +2717,7 @@ before): to fire once a press.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Returns:** the bits of the actions.
 
@@ -2741,7 +2741,7 @@ The actions that were released in this frame.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Returns:** the bits of the actions.
 
@@ -2765,7 +2765,7 @@ How many frames `action` has been held; 0 if it is not.
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
+| `p` | 0 to 3 | The player. |
 | `action` | one bit | The action. |
 
 **Returns:** the frames, 0-65535.
@@ -2796,7 +2796,7 @@ CTRLREPEAT(p, actions [, delay, rate])   ' p UByte, the rest UInteger; gives UBy
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 or 1 | The player. |
+| `p` | 0 to 3 | The player. |
 | `actions` | the bits of one or more actions | The actions. |
 | `delay` | frames; 10 if left out | When it starts repeating. |
 | `rate` | frames; 3 if left out | How often it repeats. |
@@ -2825,7 +2825,7 @@ bytes), to save them with [SAVEDATA](#savedata) and get them back with
 
 | Parameter | Values | What it is |
 |---|---|---|
-| `p` | 0 (if left out) or 1 | The player. |
+| `p` | 0 (if left out) to 3 | The player. |
 
 **Returns:** the address.
 

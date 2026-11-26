@@ -491,12 +491,13 @@ int zxb_zxv_key(int n)
     return (REG8(ZXV_I_KEYMAP + (hid >> 3)) >> (hid & 7)) & 1;
 }
 
-/* JOY(n): the buttons of joystick n (0 or 1), 0 if it is not there */
+/* JOY(n): the buttons of joystick n (0 to 3, ZX-V D122), 0 if it is not there; with fire 4, L and R
+ * (D118) */
 int zxb_zxv_joy(int n)
 {
-    range(n, 0, 1);
+    range(n, 0, 3);
     uint32_t j = zxv_joy_read(n);
-    return j & ZXV_JOY_CONNECTED ? (int)(j & 0x1FF) : 0;
+    return j & ZXV_JOY_CONNECTED ? (int)(j & 0xFFF) : 0;
 }
 
 /* SOUND r, v: AY register r (0-15 the first chip, 16-31 the second) */

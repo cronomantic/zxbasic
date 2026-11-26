@@ -15,7 +15,7 @@
 #else
 #include "zxv_api.h"
 #define ZXV_INPUT_KEYMAP ((const volatile uint8_t *)(uintptr_t)ZXV_I_KEYMAP)
-#define ZXV_INPUT_JOY(n) (*(const volatile uint16_t *)(uintptr_t)((n) ? ZXV_I_JOY1 : ZXV_I_JOY0))
+#define ZXV_INPUT_JOY(n) (*(const volatile uint16_t *)(uintptr_t)(ZXV_I_JOY0 + 2u * (unsigned)(n)))  /* JOY0 a JOY3 */
 #define ZXV_INPUT_FLUSH() do { while (zxv_key_get() >= 0) {} } while (0)
 #define ZXV_INPUT_LANG() zxv_lang_get()
 #endif
@@ -66,7 +66,7 @@ void zxv_input_update(zxv_input *in)
 {
     const zxv_input_map *m = in->map;
     uint16_t joy = 0;
-    if (m->pad == 0 || m->pad == 1) {
+    if (m->pad >= 0 && m->pad <= 3) {
         joy = ZXV_INPUT_JOY(m->pad);
         if (!(joy & ZXV_JOY_CONNECTED))
             joy = 0;

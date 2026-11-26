@@ -48,7 +48,7 @@
 typedef struct {
     uint8_t keys[ZXV_IN_ACTIONS][ZXV_IN_KEYS];  /* teclas (códigos HID) de cada acción; 0: ninguna */
     uint16_t joy[ZXV_IN_ACTIONS];               /* botones del mando que la hacen (ZXV_JOY_...) */
-    int8_t pad;                                 /* el mando: 0, 1, o -1 (ninguno) */
+    int8_t pad;                                 /* el mando: de 0 a 3, o -1 (ninguno) */
     uint8_t flags;                              /* ZXV_IN_KEEP_QUEUE */
 } zxv_input_map;
 
